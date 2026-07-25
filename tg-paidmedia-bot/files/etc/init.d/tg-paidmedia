@@ -25,8 +25,8 @@ start_service() {
 		return 1
 	}
 
-	config_get bot_title "$SECTION" bot_title "Paid Media Shop"
-	config_get welcome_text "$SECTION" welcome_text "Choose an item below and Telegram will show the official Stars purchase confirmation window."
+	config_get bot_title "$SECTION" bot_title "Магазин платного контента"
+	config_get welcome_text "$SECTION" welcome_text "Выберите товар ниже, и Telegram покажет официальное окно подтверждения покупки за Stars."
 	config_get data_dir "$SECTION" data_dir "/var/lib/tg-paidmedia"
 	config_get catalog_path "$SECTION" catalog_path "/etc/tg-paidmedia/catalog.json"
 	config_get state_path "$SECTION" state_path "/var/lib/tg-paidmedia/state.json"
