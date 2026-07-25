@@ -249,6 +249,7 @@ class TelegramPaidMediaBot:
                 "offset": 0,
                 "pending_actions": {},
                 "pending_uploads": {},
+                "subscribers": {},
                 "stats": {
                     "handled_updates": 0,
                     "purchases": 0,
@@ -260,6 +261,7 @@ class TelegramPaidMediaBot:
         self.state.setdefault("offset", 0)
         self.state.setdefault("pending_actions", {})
         self.state.setdefault("pending_uploads", {})
+        self.state.setdefault("subscribers", {})
         self.state.setdefault("stats", {})
         self.state["stats"].setdefault("handled_updates", 0)
         self.state["stats"].setdefault("purchases", 0)
@@ -325,6 +327,52 @@ class TelegramPaidMediaBot:
 
     def save_state(self):
         atomic_write_json(self.state_path, self.state)
+
+    def remember_private_subscriber(self, chat, user):
+        if not isinstance(chat, dict) or not isinstance(user, dict):
+            return
+
+        if chat.get("type") != "private":
+            return
+
+        chat_id = chat.get("id")
+        user_id = user.get("id")
+        if not chat_id or not user_id:
+            return
+
+        subscribers = self.state.setdefault("subscribers", {})
+        key = str(chat_id)
+        existing = subscribers.get(key, {})
+        payload = {
+            "chat_id": int(chat_id),
+            "user_id": int(user_id),
+            "username": user.get("username", "") or "",
+            "first_name": user.get("first_name", "") or "",
+            "added_at": existing.get("added_at") or utc_now(),
+            "last_seen_at": utc_now(),
+        }
+
+        if existing == payload:
+            return
+
+        subscribers[key] = payload
+        self.save_state()
+
+    def forget_subscriber(self, chat_id):
+        if self.state.setdefault("subscribers", {}).pop(str(chat_id), None) is not None:
+            self.save_state()
+
+    def should_forget_subscriber(self, error_text):
+        lowered = (error_text or "").lower()
+        return any(
+            marker in lowered
+            for marker in {
+                "bot was blocked by the user",
+                "user is deactivated",
+                "chat not found",
+                "forbidden",
+            }
+        )
 
     def write_status(self):
         self.status["catalog_items"] = len(self.catalog["items"])
@@ -515,6 +563,8 @@ class TelegramPaidMediaBot:
         }
 
     def send_with_main_keyboard(self, chat_id, user_id, text):
+        # Telegram requires a non-empty message text to attach a reply keyboard.
+        text = text or "\u2063"
         return self.send_message(
             chat_id,
             text,
@@ -764,6 +814,41 @@ class TelegramPaidMediaBot:
             "caption": safe_caption(item.get("caption") or item.get("title")),
         }
         return self.api_call("sendPaidMedia", payload)
+
+    def notify_subscribers_about_post(self, item, exclude_chat_ids=None):
+        exclude = {int(value) for value in (exclude_chat_ids or set())}
+        delivered = 0
+
+        for chat_key, subscriber in list(self.state.get("subscribers", {}).items()):
+            try:
+                chat_id = int(subscriber.get("chat_id", chat_key))
+            except (TypeError, ValueError):
+                self.forget_subscriber(chat_key)
+                continue
+
+            if chat_id in exclude:
+                continue
+
+            try:
+                self.send_message(
+                    chat_id,
+                    "🔔 Новый платный пост уже в каталоге.\nОткройте покупку кнопкой ниже.",
+                )
+                self.send_paid_item(chat_id, item)
+                delivered += 1
+            except RuntimeError as exc:
+                LOG.warning("Failed to notify subscriber %s: %s", chat_id, exc)
+                if self.should_forget_subscriber(str(exc)):
+                    self.forget_subscriber(chat_id)
+
+        return delivered
+
+    def publish_item_and_notify(self, chat_id, item, exclude_chat_ids=None):
+        self.send_paid_item(chat_id, item)
+
+        exclude = set(exclude_chat_ids or set())
+        exclude.add(chat_id)
+        return self.notify_subscribers_about_post(item, exclude)
 
     def show_admin_help(self, chat_id):
         text = "\n".join(
@@ -1056,14 +1141,15 @@ class TelegramPaidMediaBot:
 
         publish_chat_id = pending.get("publish_chat_id")
         if publish_chat_id is not None:
-            self.send_paid_item(int(publish_chat_id), item)
+            delivered = self.publish_item_and_notify(int(publish_chat_id), item)
             self.send_message(
                 chat_id,
                 (
                     "Платный пост #{0} сохранен и опубликован.\n"
                     "Цена: {1} Stars\n"
+                    "Уведомлений отправлено: {2}\n"
                     "Чтобы отправить его в другой чат позже, используйте /publish {0}."
-                ).format(item_id, item["price"]),
+                ).format(item_id, item["price"], delivered),
             )
             return
 
@@ -1137,15 +1223,16 @@ class TelegramPaidMediaBot:
         media_count = len(media_entries)
         publish_chat_id = pending.get("publish_chat_id")
         if publish_chat_id is not None:
-            self.send_paid_item(int(publish_chat_id), item)
+            delivered = self.publish_item_and_notify(int(publish_chat_id), item)
             self.send_message(
                 chat_id,
                 (
                     "Платный пост #{0} сохранен и опубликован.\n"
                     "Файлов: {1}\n"
                     "Цена: {2} Stars\n"
+                    "Уведомлений отправлено: {3}\n"
                     "Чтобы отправить его в другой чат позже, используйте /publish {0}."
-                ).format(item_id, media_count, item["price"]),
+                ).format(item_id, media_count, item["price"], delivered),
             )
             return True
 
@@ -1353,7 +1440,13 @@ class TelegramPaidMediaBot:
             if not item:
                 self.send_message(chat_id, "Пост не найден.")
                 return
-            self.send_paid_item(chat_id, item)
+            delivered = self.publish_item_and_notify(chat_id, item)
+            self.send_message(
+                chat_id,
+                "Пост #{0} опубликован. Уведомлений отправлено: {1}.".format(
+                    item_id, delivered
+                ),
+            )
             return
 
         if command == "/balance":
@@ -1445,7 +1538,13 @@ class TelegramPaidMediaBot:
 
         if action == "publish":
             self.answer_callback(callback_id, "Публикую пост в текущий чат.")
-            self.send_paid_item(message_chat_id, item)
+            delivered = self.publish_item_and_notify(message_chat_id, item)
+            self.send_message(
+                message_chat_id,
+                "Пост #{0} опубликован. Уведомлений отправлено: {1}.".format(
+                    item_id, delivered
+                ),
+            )
             return
 
         if action in {"editprice", "edittitle", "editcaption"}:
@@ -1526,6 +1625,8 @@ class TelegramPaidMediaBot:
         user_id = from_user.get("id")
         text = (message.get("text") or "").strip()
 
+        self.remember_private_subscriber(message.get("chat", {}), from_user)
+
         pending = self.state["pending_uploads"].get(str(chat_id))
         if pending and self.is_admin(user_id) and (message.get("photo") or message.get("video")):
             self.store_media_item(chat_id, message, pending)
@@ -1548,11 +1649,7 @@ class TelegramPaidMediaBot:
             return
 
         if command in {"/start", "/catalog"}:
-            self.send_with_main_keyboard(
-                chat_id,
-                user_id,
-                "Клавиатура готова. Каталог и действия администратора доступны кнопками ниже.",
-            )
+            self.send_with_main_keyboard(chat_id, user_id, "")
             self.send_catalog(chat_id, user_id=user_id)
             return
 
@@ -1581,11 +1678,7 @@ class TelegramPaidMediaBot:
             return
 
         if command == "/help":
-            self.send_with_main_keyboard(
-                chat_id,
-                user_id,
-                "Используйте кнопки ниже для каталога и быстрых действий. Команды тоже продолжают работать.",
-            )
+            self.send_with_main_keyboard(chat_id, user_id, "")
             self.send_catalog(chat_id, user_id=user_id)
             return
 
