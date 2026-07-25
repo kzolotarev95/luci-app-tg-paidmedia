@@ -110,26 +110,84 @@ ensure_pkg() {
 	track_package "$pkg"
 }
 
+try_install_pkg() {
+	local pkg="$1"
+
+	if pkg_installed "$pkg"; then
+		return 0
+	fi
+
+	log "Installing package: $pkg"
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		if apk add "$pkg"; then
+			track_package "$pkg"
+			return 0
+		fi
+	else
+		if opkg install "$pkg"; then
+			track_package "$pkg"
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
+python_import_ok() {
+	local module="$1"
+
+	python3 -c "import $module" >/dev/null 2>&1
+}
+
+python_missing_modules() {
+	local modules missing module
+
+	modules="datetime json logging pathlib ssl tempfile traceback urllib.error urllib.request"
+	missing=""
+
+	for module in $modules; do
+		if ! python_import_ok "$module"; then
+			if [ -n "$missing" ]; then
+				missing="$missing $module"
+			else
+				missing="$module"
+			fi
+		fi
+	done
+
+	printf '%s' "$missing"
+}
+
 python_runtime_ok() {
 	if ! command_exists python3; then
 		return 1
 	fi
 
-	python3 -c "import datetime, json, logging, pathlib, ssl, tempfile, traceback, urllib.error, urllib.request" >/dev/null 2>&1
+	[ -z "$(python_missing_modules)" ]
 }
 
 ensure_python() {
+	local missing_modules
+
 	if python_runtime_ok; then
 		return 0
 	fi
 
 	ensure_pkg python3
 
+	missing_modules="$(python_missing_modules)"
+	if printf '%s\n' "$missing_modules" | grep -qw "ssl"; then
+		if ! try_install_pkg python3-openssl; then
+			log "Optional package python3-openssl is unavailable; continuing with current Python runtime"
+		fi
+	fi
+
 	if python_runtime_ok; then
 		return 0
 	fi
 
-	fail "python3 runtime is installed, but required standard modules are still unavailable"
+	missing_modules="$(python_missing_modules)"
+	fail "python3 runtime is installed, but required standard modules are still unavailable: $missing_modules"
 }
 
 fetch_archive() {
