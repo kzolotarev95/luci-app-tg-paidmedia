@@ -224,6 +224,7 @@ class TelegramPaidMediaBot:
             self.state_path,
             {
                 "offset": 0,
+                "pending_actions": {},
                 "pending_uploads": {},
                 "stats": {
                     "handled_updates": 0,
@@ -234,6 +235,7 @@ class TelegramPaidMediaBot:
             },
         )
         self.state.setdefault("offset", 0)
+        self.state.setdefault("pending_actions", {})
         self.state.setdefault("pending_uploads", {})
         self.state.setdefault("stats", {})
         self.state["stats"].setdefault("handled_updates", 0)
@@ -417,6 +419,34 @@ class TelegramPaidMediaBot:
         if reply_markup:
             payload["reply_markup"] = reply_markup
         return self.api_call("sendMessage", payload)
+
+    def build_main_keyboard(self, user_id=None):
+        rows = [
+            [{"text": "Каталог"}, {"text": "Как купить"}],
+        ]
+
+        if user_id is not None and self.is_admin(user_id):
+            rows.extend(
+                [
+                    [{"text": "Создать фото-пост"}, {"text": "Создать видео-пост"}],
+                    [{"text": "Мои посты"}, {"text": "Баланс Stars"}],
+                    [{"text": "Операции Stars"}, {"text": "Помощь админа"}],
+                    [{"text": "Отмена"}],
+                ]
+            )
+
+        return {
+            "keyboard": rows,
+            "resize_keyboard": True,
+            "is_persistent": True,
+        }
+
+    def send_with_main_keyboard(self, chat_id, user_id, text):
+        return self.send_message(
+            chat_id,
+            text,
+            reply_markup=self.build_main_keyboard(user_id=user_id),
+        )
 
     def answer_callback(self, callback_id, text=None, show_alert=False):
         payload = {
@@ -667,6 +697,144 @@ class TelegramPaidMediaBot:
     def clear_pending_upload(self, chat_id):
         self.state["pending_uploads"].pop(str(chat_id), None)
         self.save_state()
+
+    def set_pending_action(self, chat_id, action):
+        self.state["pending_actions"][str(chat_id)] = action
+        self.save_state()
+
+    def clear_pending_action(self, chat_id):
+        self.state["pending_actions"].pop(str(chat_id), None)
+        self.save_state()
+
+    def parse_price_and_title(self, raw_value):
+        parts = (raw_value or "").strip().split(" ", 1)
+        if len(parts) != 2:
+            raise ValueError("missing title")
+
+        try:
+            price = int(parts[0])
+        except ValueError as exc:
+            raise ValueError("invalid price") from exc
+
+        title = parts[1].strip()
+        if price <= 0:
+            raise ValueError("invalid price")
+        if not title:
+            raise ValueError("missing title")
+        return price, title
+
+    def handle_pending_action_input(self, chat_id, user_id, text, pending_action):
+        if not self.is_admin(user_id):
+            self.clear_pending_action(chat_id)
+            return False
+
+        action_type = pending_action.get("type")
+        if action_type not in {"create_photo_post", "create_video_post"}:
+            self.clear_pending_action(chat_id)
+            return False
+
+        try:
+            price, title = self.parse_price_and_title(text)
+        except ValueError:
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Введите данные в формате: <цена> <название>\nПример: 152 Фото Ника",
+            )
+            return True
+
+        media_kind = "photo" if action_type == "create_photo_post" else "video"
+        self.set_pending_upload(
+            chat_id,
+            media_kind,
+            price,
+            title,
+            publish_chat_id=chat_id,
+        )
+        self.clear_pending_action(chat_id)
+        self.send_with_main_keyboard(
+            chat_id,
+            user_id,
+            (
+                "Отлично. Теперь отправьте одно {0}, и я сразу опубликую платный пост "
+                "с кнопкой покупки за Stars."
+            ).format("фото" if media_kind == "photo" else "видео"),
+        )
+        return True
+
+    def handle_menu_button(self, message, text):
+        chat_id = message["chat"]["id"]
+        from_user = message.get("from", {})
+        user_id = from_user.get("id")
+
+        if text == "Каталог":
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Открываю каталог платных постов.",
+            )
+            self.send_catalog(chat_id, user_id=user_id)
+            return True
+
+        if text == "Как купить":
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                (
+                    "Откройте каталог, выберите пост и нажмите кнопку покупки. "
+                    "Telegram сам покажет официальное окно оплаты в Stars."
+                ),
+            )
+            return True
+
+        if not self.is_admin(user_id):
+            return False
+
+        if text == "Создать фото-пост":
+            self.set_pending_action(chat_id, {"type": "create_photo_post"})
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Введите цену и название одним сообщением.\nПример: 152 Фото Ника",
+            )
+            return True
+
+        if text == "Создать видео-пост":
+            self.set_pending_action(chat_id, {"type": "create_video_post"})
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Введите цену и название одним сообщением.\nПример: 250 Закрытое видео",
+            )
+            return True
+
+        if text == "Мои посты":
+            self.send_admin_items(chat_id)
+            return True
+
+        if text == "Баланс Stars":
+            self.handle_admin_command(message, "/balance", "")
+            return True
+
+        if text == "Операции Stars":
+            self.handle_admin_command(message, "/transactions", "")
+            return True
+
+        if text == "Помощь админа":
+            self.show_admin_help(chat_id)
+            return True
+
+        if text == "Отмена":
+            self.clear_pending_action(chat_id)
+            self.clear_pending_upload(chat_id)
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Ожидание действия отменено.",
+            )
+            return True
+
+        return False
 
     def store_media_item(self, chat_id, message, pending):
         if pending["kind"] == "photo":
@@ -1021,11 +1189,25 @@ class TelegramPaidMediaBot:
         if not text:
             return
 
+        if self.handle_menu_button(message, text):
+            return
+
+        pending_action = self.state["pending_actions"].get(str(chat_id))
+        if pending_action and self.handle_pending_action_input(
+            chat_id, user_id, text, pending_action
+        ):
+            return
+
         command, args = self.parse_command(text)
         if not command:
             return
 
         if command in {"/start", "/catalog"}:
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Клавиатура готова. Каталог и действия администратора доступны кнопками ниже.",
+            )
             self.send_catalog(chat_id, user_id=user_id)
             return
 
@@ -1054,13 +1236,20 @@ class TelegramPaidMediaBot:
             return
 
         if command == "/help":
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Используйте кнопки ниже для каталога и быстрых действий. Команды тоже продолжают работать.",
+            )
             self.send_catalog(chat_id, user_id=user_id)
             return
 
-        self.send_message(
+        self.send_with_main_keyboard(
             chat_id,
-            "Неизвестная команда. Используйте /catalog для каталога или /admin для команд администратора.",
+            user_id,
+            "Неизвестная команда. Откройте каталог кнопкой ниже или используйте /admin для старых команд.",
         )
+        return
 
     def handle_update(self, update):
         if "message" in update:
