@@ -697,6 +697,22 @@ class TelegramPaidMediaBot:
                     },
                 ]
             )
+            rows.append(
+                [
+                    {
+                        "text": "💸 Цена #{0}".format(item["id"]),
+                        "callback_data": "editprice:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "✏️ Название #{0}".format(item["id"]),
+                        "callback_data": "edittitle:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "📝 Подпись #{0}".format(item["id"]),
+                        "callback_data": "editcaption:{0}".format(item["id"]),
+                    },
+                ]
+            )
         return {"inline_keyboard": rows}
 
     def send_admin_items(self, chat_id):
@@ -797,38 +813,102 @@ class TelegramPaidMediaBot:
             return False
 
         action_type = pending_action.get("type")
-        if action_type not in {"create_photo_post", "create_video_post"}:
-            self.clear_pending_action(chat_id)
-            return False
+        if action_type in {"create_photo_post", "create_video_post"}:
+            try:
+                price, title = self.parse_price_and_title(text)
+            except ValueError:
+                self.send_with_main_keyboard(
+                    chat_id,
+                    user_id,
+                    "Введите данные в формате: <цена> <название>\nПример: 152 Фото Ника",
+                )
+                return True
 
-        try:
-            price, title = self.parse_price_and_title(text)
-        except ValueError:
+            media_kind = "photo" if action_type == "create_photo_post" else "video"
+            self.set_pending_upload(
+                chat_id,
+                media_kind,
+                price,
+                title,
+                publish_chat_id=chat_id,
+            )
+            self.clear_pending_action(chat_id)
             self.send_with_main_keyboard(
                 chat_id,
                 user_id,
-                "Введите данные в формате: <цена> <название>\nПример: 152 Фото Ника",
+                (
+                    "Отлично. Теперь отправьте одно {0}, и я сразу опубликую платный пост "
+                    "с кнопкой покупки за Stars."
+                ).format("фото" if media_kind == "photo" else "видео"),
             )
             return True
 
-        media_kind = "photo" if action_type == "create_photo_post" else "video"
-        self.set_pending_upload(
-            chat_id,
-            media_kind,
-            price,
-            title,
-            publish_chat_id=chat_id,
-        )
+        if action_type in {"edit_price", "edit_title", "edit_caption"}:
+            item_id = pending_action.get("item_id")
+            item = self.get_item(item_id)
+            if not item:
+                self.clear_pending_action(chat_id)
+                self.send_with_main_keyboard(
+                    chat_id,
+                    user_id,
+                    "Пост для редактирования не найден. Возможно, он уже был удален.",
+                )
+                return True
+
+            if action_type == "edit_price":
+                try:
+                    price = int((text or "").strip())
+                except ValueError:
+                    self.send_with_main_keyboard(
+                        chat_id,
+                        user_id,
+                        "Введите новую цену числом. Пример: 152",
+                    )
+                    return True
+
+                if price < 1:
+                    self.send_with_main_keyboard(
+                        chat_id,
+                        user_id,
+                        "Цена должна быть не меньше 1 Stars.",
+                    )
+                    return True
+
+                item["price"] = price
+                success_text = "Цена поста #{0} обновлена: {1} Stars.".format(item_id, price)
+            elif action_type == "edit_title":
+                title = (text or "").strip()
+                if not title:
+                    self.send_with_main_keyboard(
+                        chat_id,
+                        user_id,
+                        "Название не может быть пустым. Отправьте новый заголовок одним сообщением.",
+                    )
+                    return True
+
+                item["title"] = title
+                success_text = "Название поста #{0} обновлено.".format(item_id)
+            else:
+                caption = safe_caption(text or "")
+                if not caption:
+                    self.send_with_main_keyboard(
+                        chat_id,
+                        user_id,
+                        "Подпись не может быть пустой. Отправьте новый текст одним сообщением.",
+                    )
+                    return True
+
+                item["caption"] = caption
+                success_text = "Подпись поста #{0} обновлена.".format(item_id)
+
+            self.save_catalog()
+            self.clear_pending_action(chat_id)
+            self.send_with_main_keyboard(chat_id, user_id, success_text)
+            self.send_admin_items(chat_id)
+            return True
+
         self.clear_pending_action(chat_id)
-        self.send_with_main_keyboard(
-            chat_id,
-            user_id,
-            (
-                "Отлично. Теперь отправьте одно {0}, и я сразу опубликую платный пост "
-                "с кнопкой покупки за Stars."
-            ).format("фото" if media_kind == "photo" else "видео"),
-        )
-        return True
+        return False
 
     def handle_menu_button(self, message, text):
         chat_id = message["chat"]["id"]
@@ -1231,6 +1311,34 @@ class TelegramPaidMediaBot:
         if action == "publish":
             self.answer_callback(callback_id, "Публикую пост в текущий чат.")
             self.send_paid_item(message_chat_id, item)
+            return
+
+        if action in {"editprice", "edittitle", "editcaption"}:
+            if action == "editprice":
+                prompt = (
+                    "Введите новую цену для поста #{0} одним сообщением.\n"
+                    "Текущая цена: {1} Stars"
+                ).format(item_id, item.get("price", 0))
+                pending_type = "edit_price"
+            elif action == "edittitle":
+                prompt = (
+                    "Введите новое название для поста #{0} одним сообщением.\n"
+                    "Сейчас: {1}"
+                ).format(item_id, item.get("title") or "-")
+                pending_type = "edit_title"
+            else:
+                prompt = (
+                    "Введите новую подпись для поста #{0} одним сообщением.\n"
+                    "Сейчас: {1}"
+                ).format(item_id, item.get("caption") or item.get("title") or "-")
+                pending_type = "edit_caption"
+
+            self.set_pending_action(message_chat_id, {
+                "type": pending_type,
+                "item_id": item_id,
+            })
+            self.answer_callback(callback_id, "Режим редактирования включен.")
+            self.send_with_main_keyboard(message_chat_id, from_user.get("id"), prompt)
             return
 
         if action == "delete":
