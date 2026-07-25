@@ -14,6 +14,10 @@ SECTION=main
 start_service() {
 	local enabled token bot_title welcome_text data_dir catalog_path
 	local state_path status_path poll_timeout drop_pending admin_ids
+	local platega_enabled platega_base_url platega_merchant_id platega_secret_key
+	local platega_callback_url platega_success_url platega_fail_url platega_redirect_url
+	local platega_webhook_host platega_webhook_port platega_webhook_path
+	local platega_status_poll_interval platega_status_timeout platega_http_timeout
 
 	config_load "$CONFIG"
 	config_get_bool enabled "$SECTION" enabled 0
@@ -33,6 +37,20 @@ start_service() {
 	config_get status_path "$SECTION" status_path "/var/run/tg-paidmedia/status.json"
 	config_get poll_timeout "$SECTION" poll_timeout "25"
 	config_get_bool drop_pending "$SECTION" drop_pending 1
+	config_get_bool platega_enabled "$SECTION" platega_enabled 0
+	config_get platega_base_url "$SECTION" platega_base_url "https://app.platega.io"
+	config_get platega_merchant_id "$SECTION" platega_merchant_id ""
+	config_get platega_secret_key "$SECTION" platega_secret_key ""
+	config_get platega_callback_url "$SECTION" platega_callback_url ""
+	config_get platega_success_url "$SECTION" platega_success_url ""
+	config_get platega_fail_url "$SECTION" platega_fail_url ""
+	config_get platega_redirect_url "$SECTION" platega_redirect_url ""
+	config_get platega_webhook_host "$SECTION" platega_webhook_host "0.0.0.0"
+	config_get platega_webhook_port "$SECTION" platega_webhook_port "8099"
+	config_get platega_webhook_path "$SECTION" platega_webhook_path "/platega/webhook"
+	config_get platega_status_poll_interval "$SECTION" platega_status_poll_interval "20"
+	config_get platega_status_timeout "$SECTION" platega_status_timeout "900"
+	config_get platega_http_timeout "$SECTION" platega_http_timeout "25"
 	TG_ADMIN_IDS=""
 	config_list_foreach "$SECTION" admin_ids append_admin_id
 
@@ -50,6 +68,20 @@ start_service() {
 	procd_append_param env TG_POLL_TIMEOUT="$poll_timeout"
 	procd_append_param env TG_DROP_PENDING="$drop_pending"
 	procd_append_param env TG_ADMIN_IDS="$TG_ADMIN_IDS"
+	procd_append_param env TG_PLATEGA_ENABLED="$platega_enabled"
+	procd_append_param env TG_PLATEGA_BASE_URL="$platega_base_url"
+	procd_append_param env TG_PLATEGA_MERCHANT_ID="$platega_merchant_id"
+	procd_append_param env TG_PLATEGA_SECRET_KEY="$platega_secret_key"
+	procd_append_param env TG_PLATEGA_CALLBACK_URL="$platega_callback_url"
+	procd_append_param env TG_PLATEGA_SUCCESS_URL="$platega_success_url"
+	procd_append_param env TG_PLATEGA_FAIL_URL="$platega_fail_url"
+	procd_append_param env TG_PLATEGA_REDIRECT_URL="$platega_redirect_url"
+	procd_append_param env TG_PLATEGA_WEBHOOK_HOST="$platega_webhook_host"
+	procd_append_param env TG_PLATEGA_WEBHOOK_PORT="$platega_webhook_port"
+	procd_append_param env TG_PLATEGA_WEBHOOK_PATH="$platega_webhook_path"
+	procd_append_param env TG_PLATEGA_STATUS_POLL_INTERVAL="$platega_status_poll_interval"
+	procd_append_param env TG_PLATEGA_STATUS_TIMEOUT="$platega_status_timeout"
+	procd_append_param env TG_PLATEGA_HTTP_TIMEOUT="$platega_http_timeout"
 	procd_set_param respawn 3600 5 5
 	procd_set_param stdout 1
 	procd_set_param stderr 1

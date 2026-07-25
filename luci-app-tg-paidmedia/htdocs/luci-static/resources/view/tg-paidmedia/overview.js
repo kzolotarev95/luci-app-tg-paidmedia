@@ -670,6 +670,61 @@ return view.extend({
 		o = s.option(form.Flag, 'drop_pending', '\u0421\u0431\u0440\u0430\u0441\u044b\u0432\u0430\u0442\u044c \u043d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f Telegram \u043f\u0440\u0438 \u0441\u0442\u0430\u0440\u0442\u0435');
 		o.rmempty = false;
 
+		o = s.option(form.Flag, 'platega_enabled', 'Platega / SBP enabled');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'platega_base_url', 'Platega base URL');
+		o.rmempty = false;
+		o.placeholder = 'https://app.platega.io';
+
+		o = s.option(form.Value, 'platega_merchant_id', 'Platega merchant ID');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_secret_key', 'Platega secret key');
+		o.password = true;
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_callback_url', 'Platega callback URL');
+		o.rmempty = true;
+		o.placeholder = 'https://example.com/platega/webhook';
+
+		o = s.option(form.Value, 'platega_success_url', 'Success redirect URL');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_fail_url', 'Fail redirect URL');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_redirect_url', 'Default redirect URL');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_webhook_host', 'Webhook listen host');
+		o.rmempty = false;
+		o.placeholder = '0.0.0.0';
+
+		o = s.option(form.Value, 'platega_webhook_port', 'Webhook listen port');
+		o.datatype = 'port';
+		o.rmempty = false;
+		o.placeholder = '8099';
+
+		o = s.option(form.Value, 'platega_webhook_path', 'Webhook path');
+		o.rmempty = false;
+		o.placeholder = '/platega/webhook';
+
+		o = s.option(form.Value, 'platega_status_poll_interval', 'SBP status poll interval (seconds)');
+		o.datatype = 'uinteger';
+		o.rmempty = false;
+		o.placeholder = '20';
+
+		o = s.option(form.Value, 'platega_status_timeout', 'SBP status timeout (seconds)');
+		o.datatype = 'uinteger';
+		o.rmempty = false;
+		o.placeholder = '900';
+
+		o = s.option(form.Value, 'platega_http_timeout', 'Platega HTTP timeout (seconds)');
+		o.datatype = 'uinteger';
+		o.rmempty = false;
+		o.placeholder = '25';
+
 		o = s.option(form.Value, 'catalog_path', '\u041f\u0443\u0442\u044c \u043a \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0443');
 		o.rmempty = false;
 		o.placeholder = '/etc/tg-paidmedia/catalog.json';
@@ -710,6 +765,8 @@ return view.extend({
 		var initMeta = initList['tg-paidmedia'] || {};
 		var balance = botStatus.last_balance || {};
 		var lastPurchase = botStatus.last_purchase || {};
+		var lastPlategaEvent = botStatus.last_platega_event || {};
+		var stats = botStatus.stats || {};
 		var lastException = String(botStatus.last_exception || '').trim();
 		var runningBadge = E('span', {
 			'class': 'tg-paidmedia-badge ' + (serviceMeta.running ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped')
@@ -722,11 +779,19 @@ return view.extend({
 			{ label: '\u0422\u043e\u0432\u0430\u0440\u043e\u0432 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435', value: String(botStatus.catalog_items || 0) },
 			{ label: '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u043e\u0432', value: String(botStatus.admin_count || 0) },
 			{ label: '\u0411\u0430\u043b\u0430\u043d\u0441 Stars', value: String(balance.amount || 0) },
+			{ label: 'Stars purchases', value: String(stats.stars_purchases || 0) },
+			{ label: 'SBP orders', value: String(stats.sbp_orders_created || 0) },
+			{ label: 'SBP delivered', value: String(stats.sbp_orders_paid || 0) },
 			{ label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u043e\u043f\u0440\u043e\u0441', value: String(botStatus.last_poll_at || '-'), subtle: true },
 			{ label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u043e\u0448\u0438\u0431\u043a\u0430', value: String(botStatus.last_error || '-'), subtle: true },
 			{
 				label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u043f\u043e\u043a\u0443\u043f\u043a\u0430',
 				value: lastPurchase.item_id ? String('#' + lastPurchase.item_id + ' ' + (lastPurchase.item_title || '')) : '-',
+				subtle: true
+			},
+			{
+				label: 'Last SBP event',
+				value: lastPlategaEvent.status ? String(lastPlategaEvent.status + ' / ' + (lastPlategaEvent.transaction_id || '-')) : '-',
 				subtle: true
 			}
 		];

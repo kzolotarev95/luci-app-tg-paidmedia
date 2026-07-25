@@ -2,6 +2,7 @@
 
 import datetime
 import http.client
+import http.server
 import json
 import logging
 import os
@@ -10,8 +11,10 @@ import socket
 import ssl
 import subprocess
 import tempfile
+import threading
 import time
 import traceback
+import urllib.parse
 import urllib.error
 import urllib.request
 
@@ -204,6 +207,55 @@ def compact_name(user):
     return str(user.get("id", "unknown"))
 
 
+def parse_callback_body(body_bytes):
+    text = (body_bytes or b"").decode("utf-8", errors="replace").strip()
+    if not text:
+        return {}
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return {
+            key: values[-1]
+            for key, values in urllib.parse.parse_qs(
+                text, keep_blank_values=True, strict_parsing=False
+            ).items()
+        }
+
+
+class PlategaWebhookHandler(http.server.BaseHTTPRequestHandler):
+    server_version = "TGPaidMediaWebhook/1.0"
+
+    def log_message(self, format_value, *args):
+        LOG.info("platega webhook: " + format_value, *args)
+
+    def do_POST(self):
+        bot = getattr(self.server, "bot", None)
+        if bot is None:
+            self.send_error(500, "Bot context is missing")
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            content_length = 0
+
+        body = self.rfile.read(max(content_length, 0))
+        payload = parse_callback_body(body)
+        status_code, response_payload = bot.handle_platega_webhook(
+            self.path,
+            dict(self.headers.items()),
+            payload,
+        )
+
+        body_bytes = json.dumps(response_payload, ensure_ascii=True).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body_bytes)))
+        self.end_headers()
+        self.wfile.write(body_bytes)
+
+
 class TelegramPaidMediaBot:
     def __init__(self):
         self.token = os.environ.get("TG_BOT_TOKEN", "").strip()
@@ -226,6 +278,9 @@ class TelegramPaidMediaBot:
         )
         self.poll_timeout = env_int("TG_POLL_TIMEOUT", 25)
         self.drop_pending = env_bool("TG_DROP_PENDING", True)
+        self.orders_path = os.environ.get(
+            "TG_ORDERS_PATH", os.path.join(self.data_dir, "orders.json")
+        )
         self.bot_title = os.environ.get("TG_BOT_TITLE", "Магазин платного контента").strip()
         self.welcome_text = os.environ.get(
             "TG_WELCOME_TEXT",
@@ -235,9 +290,47 @@ class TelegramPaidMediaBot:
             ),
         ).strip()
 
+        self.platega_enabled = env_bool("TG_PLATEGA_ENABLED", False)
+        self.platega_base_url = (
+            os.environ.get("TG_PLATEGA_BASE_URL", "https://app.platega.io")
+            .strip()
+            .rstrip("/")
+        )
+        self.platega_merchant_id = os.environ.get("TG_PLATEGA_MERCHANT_ID", "").strip()
+        self.platega_secret = os.environ.get("TG_PLATEGA_SECRET_KEY", "").strip()
+        self.platega_callback_url = os.environ.get(
+            "TG_PLATEGA_CALLBACK_URL", ""
+        ).strip()
+        self.platega_success_url = os.environ.get(
+            "TG_PLATEGA_SUCCESS_URL", ""
+        ).strip()
+        self.platega_fail_url = os.environ.get("TG_PLATEGA_FAIL_URL", "").strip()
+        self.platega_redirect_url = os.environ.get(
+            "TG_PLATEGA_REDIRECT_URL", ""
+        ).strip()
+        self.platega_webhook_host = os.environ.get(
+            "TG_PLATEGA_WEBHOOK_HOST", "0.0.0.0"
+        ).strip() or "0.0.0.0"
+        self.platega_webhook_port = env_int("TG_PLATEGA_WEBHOOK_PORT", 8099)
+        self.platega_webhook_path = (
+            os.environ.get("TG_PLATEGA_WEBHOOK_PATH", "/platega/webhook").strip()
+            or "/platega/webhook"
+        )
+        if not self.platega_webhook_path.startswith("/"):
+            self.platega_webhook_path = "/" + self.platega_webhook_path
+        self.platega_status_poll_interval = env_int(
+            "TG_PLATEGA_STATUS_POLL_INTERVAL", 20
+        )
+        self.platega_status_timeout = env_int("TG_PLATEGA_STATUS_TIMEOUT", 900)
+        self.platega_http_timeout = env_int("TG_PLATEGA_HTTP_TIMEOUT", 25)
+        self._platega_server = None
+        self._platega_server_thread = None
+        self._orders_lock = threading.Lock()
+
         pathlib.Path(self.data_dir).mkdir(parents=True, exist_ok=True)
         pathlib.Path(self.catalog_path).parent.mkdir(parents=True, exist_ok=True)
         pathlib.Path(self.status_path).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(self.orders_path).parent.mkdir(parents=True, exist_ok=True)
 
         self.catalog = load_json(self.catalog_path, {"next_id": 1, "items": []})
         self.catalog.setdefault("next_id", 1)
@@ -265,10 +358,19 @@ class TelegramPaidMediaBot:
         self.state.setdefault("stats", {})
         self.state["stats"].setdefault("handled_updates", 0)
         self.state["stats"].setdefault("purchases", 0)
+        self.state["stats"].setdefault("stars_purchases", 0)
+        self.state["stats"].setdefault("sbp_orders_created", 0)
+        self.state["stats"].setdefault("sbp_orders_paid", 0)
         self.state.setdefault("last_balance", {})
         self.state.setdefault("last_purchase", {})
+        self.state.setdefault("last_platega_order", {})
+        self.state.setdefault("last_platega_event", {})
+        self.orders = load_json(self.orders_path, {"next_id": 1, "items": []})
+        self.orders.setdefault("next_id", 1)
+        self.orders.setdefault("items", [])
 
         self._normalize_catalog()
+        self._normalize_orders()
         self.me = None
         self.status = {
             "started_at": utc_now(),
@@ -282,6 +384,10 @@ class TelegramPaidMediaBot:
             "last_exception": "",
             "last_purchase": self.state.get("last_purchase", {}),
             "last_balance": self.state.get("last_balance", {}),
+            "last_platega_order": self.state.get("last_platega_order", {}),
+            "last_platega_event": self.state.get("last_platega_event", {}),
+            "platega_enabled": self.has_platega_credentials(),
+            "platega_webhook_url": self.platega_callback_url,
             "stats": self.state.get("stats", {}),
         }
 
@@ -322,11 +428,47 @@ class TelegramPaidMediaBot:
         self.catalog["items"] = normalized
         self.catalog["next_id"] = max(int(self.catalog.get("next_id", 1)), max_id + 1)
 
+    def _normalize_orders(self):
+        max_id = 0
+        normalized = []
+
+        for entry in self.orders.get("items", []):
+            if not isinstance(entry, dict):
+                continue
+            try:
+                order_id = int(entry.get("id"))
+                item_id = int(entry.get("item_id"))
+                chat_id = int(entry.get("chat_id"))
+                user_id = int(entry.get("user_id"))
+            except (TypeError, ValueError):
+                continue
+
+            entry["id"] = order_id
+            entry["item_id"] = item_id
+            entry["chat_id"] = chat_id
+            entry["user_id"] = user_id
+            entry["status"] = str(entry.get("status") or "CREATED").strip().upper()
+            entry["created_at"] = entry.get("created_at") or utc_now()
+            entry["updated_at"] = entry.get("updated_at") or entry["created_at"]
+            entry["delivery_state"] = str(entry.get("delivery_state") or "pending").strip().lower()
+            entry["poll_next_at"] = float(entry.get("poll_next_at") or 0)
+            entry["poll_until"] = float(entry.get("poll_until") or 0)
+            entry["amount_rub"] = float(entry.get("amount_rub") or 0)
+            normalized.append(entry)
+            max_id = max(max_id, order_id)
+
+        normalized.sort(key=lambda value: int(value["id"]))
+        self.orders["items"] = normalized
+        self.orders["next_id"] = max(int(self.orders.get("next_id", 1)), max_id + 1)
+
     def save_catalog(self):
         atomic_write_json(self.catalog_path, self.catalog)
 
     def save_state(self):
         atomic_write_json(self.state_path, self.state)
+
+    def save_orders(self):
+        atomic_write_json(self.orders_path, self.orders)
 
     def remember_private_subscriber(self, chat, user):
         if not isinstance(chat, dict) or not isinstance(user, dict):
@@ -379,6 +521,10 @@ class TelegramPaidMediaBot:
         self.status["stats"] = self.state.get("stats", {})
         self.status["last_balance"] = self.state.get("last_balance", {})
         self.status["last_purchase"] = self.state.get("last_purchase", {})
+        self.status["last_platega_order"] = self.state.get("last_platega_order", {})
+        self.status["last_platega_event"] = self.state.get("last_platega_event", {})
+        self.status["platega_enabled"] = self.has_platega_credentials()
+        self.status["platega_webhook_url"] = self.platega_callback_url
         atomic_write_json(self.status_path, self.status)
 
     def update_status(self, **kwargs):
@@ -478,6 +624,361 @@ class TelegramPaidMediaBot:
                     method, (completed.stdout or "").strip()[:200]
                 )
             ) from exc
+
+    def has_platega_credentials(self):
+        return (
+            self.platega_enabled
+            and bool(self.platega_merchant_id)
+            and bool(self.platega_secret)
+        )
+
+    def platega_headers(self):
+        return {
+            "Content-Type": "application/json",
+            "X-MerchantId": self.platega_merchant_id,
+            "X-Secret": self.platega_secret,
+        }
+
+    def platega_request(self, method, path, payload=None):
+        if not self.has_platega_credentials():
+            raise RuntimeError("Platega is not configured")
+
+        body = None
+        headers = self.platega_headers()
+        if payload is not None:
+            body = json.dumps(payload).encode("utf-8")
+
+        request = urllib.request.Request(
+            self.platega_base_url + path,
+            data=body,
+            headers=headers,
+            method=method.upper(),
+        )
+
+        try:
+            with self.url_opener.open(request, timeout=self.platega_http_timeout) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError("Platega HTTP error: {0}".format(details)) from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError("Platega connection error: {0}".format(exc)) from exc
+
+    def item_rub_price(self, item):
+        try:
+            value = float(item.get("rub_price") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+        if value <= 0:
+            return 0.0
+        return round(value, 2)
+
+    def format_rub_amount(self, value):
+        amount = round(float(value or 0), 2)
+        return "{0:.2f}".format(amount).rstrip("0").rstrip(".")
+
+    def order_title(self, order):
+        item = self.get_item(order.get("item_id"))
+        if item:
+            return item.get("title") or "Item {0}".format(item["id"])
+        return "Item {0}".format(order.get("item_id"))
+
+    def find_order(self, local_order_id):
+        for entry in self.orders["items"]:
+            if int(entry["id"]) == int(local_order_id):
+                return entry
+        return None
+
+    def find_order_by_transaction(self, transaction_id):
+        transaction_id = str(transaction_id or "").strip()
+        if not transaction_id:
+            return None
+        for entry in self.orders["items"]:
+            if str(entry.get("transaction_id") or "").strip() == transaction_id:
+                return entry
+        return None
+
+    def touch_order(self, order, **kwargs):
+        order.update(kwargs)
+        order["updated_at"] = utc_now()
+        self.state["last_platega_order"] = {
+            "id": order.get("id"),
+            "item_id": order.get("item_id"),
+            "item_title": self.order_title(order),
+            "status": order.get("status"),
+            "delivery_state": order.get("delivery_state"),
+            "amount_rub": order.get("amount_rub", 0),
+            "transaction_id": order.get("transaction_id", ""),
+            "updated_at": order["updated_at"],
+        }
+        self.save_orders()
+        self.save_state()
+        self.update_status(last_platega_order=self.state["last_platega_order"])
+
+    def start_platega_webhook_server(self):
+        if not self.has_platega_credentials() or self._platega_server is not None:
+            return
+
+        server = http.server.ThreadingHTTPServer(
+            (self.platega_webhook_host, self.platega_webhook_port),
+            PlategaWebhookHandler,
+        )
+        server.bot = self
+        self._platega_server = server
+        self._platega_server_thread = threading.Thread(
+            target=server.serve_forever,
+            name="platega-webhook",
+            daemon=True,
+        )
+        self._platega_server_thread.start()
+        LOG.info(
+            "Platega webhook server is listening on %s:%s%s",
+            self.platega_webhook_host,
+            self.platega_webhook_port,
+            self.platega_webhook_path,
+        )
+
+    def send_photo(self, chat_id, file_id, caption=""):
+        payload = {"chat_id": chat_id, "photo": file_id}
+        if caption:
+            payload["caption"] = safe_caption(caption)
+        return self.api_call("sendPhoto", payload)
+
+    def send_video(self, chat_id, file_id, caption=""):
+        payload = {"chat_id": chat_id, "video": file_id}
+        if caption:
+            payload["caption"] = safe_caption(caption)
+        return self.api_call("sendVideo", payload)
+
+    def send_media_group(self, chat_id, media_entries, caption=""):
+        payload_media = []
+        for index, entry in enumerate(media_entries):
+            payload_entry = {"type": entry["type"], "media": entry["file_id"]}
+            if index == 0 and caption:
+                payload_entry["caption"] = safe_caption(caption)
+            payload_media.append(payload_entry)
+        return self.api_call("sendMediaGroup", {"chat_id": chat_id, "media": payload_media})
+
+    def send_direct_item(self, chat_id, item):
+        media_entries = normalize_media_entries(item, item.get("kind", "photo"))
+        caption = safe_caption(item.get("caption") or item.get("title"))
+
+        if not media_entries:
+            raise RuntimeError("Item has no media to deliver")
+
+        if len(media_entries) == 1:
+            entry = media_entries[0]
+            if entry["type"] == "photo":
+                return self.send_photo(chat_id, entry["file_id"], caption=caption)
+            return self.send_video(chat_id, entry["file_id"], caption=caption)
+
+        return self.send_media_group(chat_id, media_entries, caption=caption)
+
+    def create_platega_order(self, chat_id, user, item):
+        rub_price = self.item_rub_price(item)
+        if rub_price <= 0:
+            raise RuntimeError("SBP price is not configured for this item")
+        if not self.has_platega_credentials():
+            raise RuntimeError("Platega is not configured")
+
+        with self._orders_lock:
+            local_order_id = int(self.orders["next_id"])
+            self.orders["next_id"] = local_order_id + 1
+
+            order = {
+                "id": local_order_id,
+                "item_id": int(item["id"]),
+                "chat_id": int(chat_id),
+                "user_id": int(user.get("id") or chat_id),
+                "user_name": compact_name(user),
+                "amount_rub": rub_price,
+                "status": "CREATED",
+                "delivery_state": "pending",
+                "created_at": utc_now(),
+                "updated_at": utc_now(),
+                "transaction_id": "",
+                "payment_url": "",
+                "poll_next_at": 0,
+                "poll_until": 0,
+            }
+            self.orders["items"].append(order)
+            self.save_orders()
+
+        payload = {
+            "paymentMethod": 2,
+            "amount": rub_price,
+            "currency": "RUB",
+            "description": "Paid media #{0}: {1}".format(item["id"], item.get("title", "")),
+            "payload": "tg-paidmedia-order:{0}".format(local_order_id),
+            "successUrl": self.platega_success_url,
+            "failedUrl": self.platega_fail_url,
+            "redirectUrl": self.platega_redirect_url or self.platega_success_url,
+        }
+
+        platega_result = self.platega_request("POST", "/transaction/process", payload)
+        transaction_id = platega_result.get("id") or platega_result.get("transactionId") or ""
+        payment_url = (
+            platega_result.get("url")
+            or platega_result.get("redirectUrl")
+            or platega_result.get("paymentUrl")
+            or ""
+        )
+        now_value = time.time()
+
+        with self._orders_lock:
+            order = self.find_order(local_order_id)
+            if order is None:
+                raise RuntimeError("Local order disappeared")
+            self.state["stats"]["sbp_orders_created"] += 1
+            self.touch_order(
+                order,
+                status=str(platega_result.get("status") or "CREATED").upper(),
+                transaction_id=str(transaction_id),
+                payment_url=str(payment_url),
+                poll_next_at=now_value + max(self.platega_status_poll_interval, 5),
+                poll_until=now_value + max(self.platega_status_timeout, 60),
+            )
+
+        return order
+
+    def fetch_platega_status(self, order):
+        transaction_id = str(order.get("transaction_id") or "").strip()
+        if not transaction_id:
+            raise RuntimeError("Order has no Platega transaction id")
+
+        try:
+            return self.platega_request("GET", "/transaction/{0}".format(transaction_id))
+        except RuntimeError:
+            return self.platega_request("GET", "/h2h/{0}".format(transaction_id))
+
+    def sync_platega_order(self, order, status_payload, source="poll"):
+        status_value = str(status_payload.get("status") or order.get("status") or "").upper()
+        transaction_id = (
+            status_payload.get("id")
+            or status_payload.get("transactionId")
+            or order.get("transaction_id")
+            or ""
+        )
+        payment_url = (
+            status_payload.get("url")
+            or status_payload.get("redirectUrl")
+            or status_payload.get("paymentUrl")
+            or order.get("payment_url")
+            or ""
+        )
+
+        self.state["last_platega_event"] = {
+            "source": source,
+            "status": status_value,
+            "transaction_id": str(transaction_id),
+            "received_at": utc_now(),
+        }
+        self.save_state()
+        self.update_status(last_platega_event=self.state["last_platega_event"])
+
+        next_poll = order.get("poll_next_at", 0)
+        if status_value in {"CONFIRMED", "DECLINED", "CANCELED", "CANCELLED", "CHARGEBACKED"}:
+            next_poll = 0
+
+        self.touch_order(
+            order,
+            status=status_value or order.get("status", "CREATED"),
+            transaction_id=str(transaction_id),
+            payment_url=str(payment_url),
+            poll_next_at=next_poll,
+        )
+
+        if status_value == "CONFIRMED" and order.get("delivery_state") != "delivered":
+            self.deliver_platega_order(order)
+
+    def deliver_platega_order(self, order):
+        item = self.get_item(order.get("item_id"))
+        if not item:
+            self.touch_order(order, delivery_state="missing_item")
+            return
+
+        if order.get("delivery_state") == "delivered":
+            return
+
+        try:
+            self.send_message(
+                order["chat_id"],
+                "SBP payment confirmed. Sending your content now.",
+            )
+            self.send_direct_item(order["chat_id"], item)
+            self.state["stats"]["sbp_orders_paid"] += 1
+            self.save_state()
+            self.touch_order(order, delivery_state="delivered")
+        except Exception as exc:
+            LOG.exception("Unable to deliver SBP order %s", order.get("id"))
+            self.touch_order(order, delivery_state="delivery_error", delivery_error=str(exc))
+
+    def check_pending_platega_orders(self):
+        if not self.has_platega_credentials():
+            return
+
+        now_value = time.time()
+        for order in list(self.orders.get("items", [])):
+            if order.get("delivery_state") == "delivered":
+                continue
+            if order.get("status") in {"CONFIRMED", "DECLINED", "CANCELED", "CANCELLED", "CHARGEBACKED"}:
+                continue
+            if order.get("poll_next_at", 0) and order["poll_next_at"] > now_value:
+                continue
+            if order.get("poll_until", 0) and order["poll_until"] < now_value:
+                self.touch_order(order, delivery_state="expired_poll", poll_next_at=0)
+                continue
+
+            try:
+                status_payload = self.fetch_platega_status(order)
+            except Exception as exc:
+                LOG.warning("Unable to refresh Platega order %s: %s", order.get("id"), exc)
+                self.touch_order(
+                    order,
+                    poll_next_at=now_value + max(self.platega_status_poll_interval, 5),
+                )
+                continue
+
+            self.sync_platega_order(order, status_payload, source="poll")
+            if order.get("status") not in {"CONFIRMED", "DECLINED", "CANCELED", "CANCELLED", "CHARGEBACKED"}:
+                self.touch_order(
+                    order,
+                    poll_next_at=now_value + max(self.platega_status_poll_interval, 5),
+                )
+
+    def handle_platega_webhook(self, path, headers, payload):
+        if urllib.parse.urlparse(path).path != self.platega_webhook_path:
+            return 404, {"ok": False, "error": "unknown path"}
+
+        if not self.has_platega_credentials():
+            return 503, {"ok": False, "error": "platega disabled"}
+
+        merchant_id = str(
+            headers.get("X-MerchantId")
+            or headers.get("x-merchantid")
+            or headers.get("X-MerchantID")
+            or ""
+        ).strip()
+        secret = str(headers.get("X-Secret") or headers.get("x-secret") or "").strip()
+        if merchant_id != self.platega_merchant_id or secret != self.platega_secret:
+            LOG.warning("Rejected Platega webhook because credentials do not match")
+            return 403, {"ok": False, "error": "forbidden"}
+
+        order = self.find_order_by_transaction(payload.get("id") or payload.get("transactionId"))
+        if order is None:
+            self.state["last_platega_event"] = {
+                "source": "webhook",
+                "status": str(payload.get("status") or "").upper(),
+                "transaction_id": str(payload.get("id") or payload.get("transactionId") or ""),
+                "received_at": utc_now(),
+                "warning": "order not found",
+            }
+            self.save_state()
+            self.update_status(last_platega_event=self.state["last_platega_event"])
+            return 200, {"ok": True}
+
+        self.sync_platega_order(order, payload, source="webhook")
+        return 200, {"ok": True}
 
     def get_item(self, item_id):
         for item in self.catalog["items"]:
@@ -615,6 +1116,7 @@ class TelegramPaidMediaBot:
         self.me = self.api_call("getMe")
         LOG.info("Setup step: setMyCommands")
         self.set_my_commands()
+        self.start_platega_webhook_server()
 
         if self.drop_pending:
             try:
@@ -1619,6 +2121,415 @@ class TelegramPaidMediaBot:
                 thank_you += "\nUnlocked item: #{0} {1}".format(item["id"], item["title"])
             self.send_message(user["id"], thank_you)
 
+    _legacy_build_catalog_text = build_catalog_text
+    _legacy_build_catalog_keyboard = build_catalog_keyboard
+    _legacy_build_admin_items_text = build_admin_items_text
+    _legacy_build_admin_items_keyboard = build_admin_items_keyboard
+    _legacy_send_catalog = send_catalog
+    _legacy_send_admin_items = send_admin_items
+    _legacy_show_admin_help = show_admin_help
+    _legacy_publish_item_and_notify = publish_item_and_notify
+    _legacy_handle_pending_action_input = handle_pending_action_input
+    _legacy_handle_admin_command = handle_admin_command
+    _legacy_handle_callback_query = handle_callback_query
+    _legacy_handle_purchase_update = handle_purchase_update
+
+    def build_catalog_text(self, include_admin_hint=False):
+        lines = [self.bot_title, "", self.welcome_text, ""]
+
+        if not self.catalog["items"]:
+            lines.append("No published paid posts yet.")
+        else:
+            lines.append("Available paid posts:")
+            for item in self.catalog["items"]:
+                media_type = "Photo" if item["kind"] == "photo" else "Video"
+                price_parts = ["{0} Stars".format(item["price"])]
+                rub_price = self.item_rub_price(item)
+                if rub_price > 0:
+                    price_parts.append("{0} RUB via SBP".format(self.format_rub_amount(rub_price)))
+                lines.append(
+                    "#{0} | {1} | {2} | {3}".format(
+                        item["id"], media_type, " / ".join(price_parts), item["title"]
+                    )
+                )
+
+        if self.catalog["items"]:
+            lines.extend(
+                [
+                    "",
+                    "Use the buttons below, or /buy <id> for Stars.",
+                ]
+            )
+            if self.has_platega_credentials():
+                lines.append("For SBP use /buyrub <id>.")
+
+        if include_admin_hint and self.admin_ids:
+            lines.extend(["", "Admin commands: /admin"])
+
+        return "\n".join(lines)
+
+    def build_catalog_keyboard(self):
+        rows = []
+        for item in self.catalog["items"]:
+            row = self.build_item_purchase_buttons(item)
+            rows.append(row)
+        return {"inline_keyboard": rows} if rows else None
+
+    def build_item_purchase_buttons(self, item):
+        row = [
+            {
+                "text": "Open for ⭐ {0}".format(item["price"]),
+                "callback_data": "buy:{0}".format(item["id"]),
+            }
+        ]
+        rub_price = self.item_rub_price(item)
+        if rub_price > 0 and self.has_platega_credentials():
+            row.append(
+                {
+                    "text": "Buy for {0} RUB SBP".format(
+                        self.format_rub_amount(rub_price)
+                    ),
+                    "callback_data": "buyrub:{0}".format(item["id"]),
+                }
+            )
+        return row
+
+    def build_item_purchase_keyboard(self, item):
+        return {"inline_keyboard": [self.build_item_purchase_buttons(item)]}
+
+    def send_item_purchase_options(self, chat_id, item):
+        self.send_message(
+            chat_id,
+            "Choose a payment method for post #{0}:".format(item["id"]),
+            reply_markup=self.build_item_purchase_keyboard(item),
+        )
+
+    def build_admin_items_text(self):
+        if not self.catalog["items"]:
+            return "Catalog is empty. Use /addphoto or /addvideo."
+
+        lines = ["Your paid posts:"]
+        for item in self.catalog["items"]:
+            media_type = "Photo" if item["kind"] == "photo" else "Video"
+            price_parts = ["⭐{0}".format(item["price"])]
+            rub_price = self.item_rub_price(item)
+            if rub_price > 0:
+                price_parts.append("{0} RUB".format(self.format_rub_amount(rub_price)))
+            lines.append(
+                "#{0} | {1} | {2} | {3}".format(
+                    item["id"], media_type, " / ".join(price_parts), item["title"]
+                )
+            )
+
+        lines.extend(
+            [
+                "",
+                "Publish: /publish <id>",
+                "Set Stars price: /setprice <id> <stars>",
+                "Set SBP price: /setrubprice <id> <rubles>",
+                "Recent SBP orders: /orders",
+            ]
+        )
+        return "\n".join(lines)
+
+    def build_admin_items_keyboard(self):
+        if not self.catalog["items"]:
+            return None
+
+        rows = []
+        for item in self.catalog["items"]:
+            rows.append(
+                [
+                    {
+                        "text": "Publish #{0}".format(item["id"]),
+                        "callback_data": "publish:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "Delete #{0}".format(item["id"]),
+                        "callback_data": "delete:{0}".format(item["id"]),
+                    },
+                ]
+            )
+            rows.append(
+                [
+                    {
+                        "text": "Stars #{0}".format(item["id"]),
+                        "callback_data": "editprice:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "RUB #{0}".format(item["id"]),
+                        "callback_data": "editrubprice:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "Title #{0}".format(item["id"]),
+                        "callback_data": "edittitle:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "Caption #{0}".format(item["id"]),
+                        "callback_data": "editcaption:{0}".format(item["id"]),
+                    },
+                ]
+            )
+        return {"inline_keyboard": rows}
+
+    def send_catalog(self, chat_id, user_id=None):
+        self.send_message(
+            chat_id,
+            self.build_catalog_text(include_admin_hint=self.is_admin(user_id)),
+            reply_markup=self.build_catalog_keyboard(),
+        )
+
+    def send_admin_items(self, chat_id):
+        self.send_message(
+            chat_id,
+            self.build_admin_items_text(),
+            reply_markup=self.build_admin_items_keyboard(),
+        )
+
+    def publish_item_and_notify(self, chat_id, item, exclude_chat_ids=None):
+        delivered = self._legacy_publish_item_and_notify(chat_id, item, exclude_chat_ids)
+        self.send_item_purchase_options(chat_id, item)
+        return delivered
+
+    def show_admin_help(self, chat_id):
+        text = "\n".join(
+            [
+                "Admin commands:",
+                "/postphoto <stars> <title> - publish next photo as paid post",
+                "/postvideo <stars> <title> - publish next video as paid post",
+                "/addphoto <stars> <title> - save next photo to catalog",
+                "/addvideo <stars> <title> - save next video to catalog",
+                "/items - show catalog items",
+                "/publish <id> - publish saved post to current chat",
+                "/setprice <id> <stars> - change Telegram Stars price",
+                "/setrubprice <id> <rubles> - change SBP price in RUB",
+                "/settitle <id> <title> - change title",
+                "/setcaption <id> <text> - change caption",
+                "/delete <id> - delete item",
+                "/orders - recent SBP orders",
+                "/balance - Telegram Stars balance",
+                "/transactions [count] - recent Stars operations",
+                "/withdraw - withdrawal info",
+            ]
+        )
+        self.send_message(chat_id, text)
+
+    def handle_pending_action_input(self, chat_id, user_id, text, pending_action):
+        if pending_action.get("type") != "edit_rub_price":
+            return self._legacy_handle_pending_action_input(
+                chat_id, user_id, text, pending_action
+            )
+
+        if not self.is_admin(user_id):
+            self.clear_pending_action(chat_id)
+            return False
+
+        item_id = pending_action.get("item_id")
+        item = self.get_item(item_id)
+        if not item:
+            self.clear_pending_action(chat_id)
+            self.send_with_main_keyboard(chat_id, user_id, "Item not found.")
+            return True
+
+        try:
+            rub_price = round(float((text or "").strip().replace(",", ".")), 2)
+        except ValueError:
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Send the new SBP price as a number. Example: 299",
+            )
+            return True
+
+        if rub_price < 0:
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "SBP price cannot be negative.",
+            )
+            return True
+
+        item["rub_price"] = rub_price
+        self.save_catalog()
+        self.clear_pending_action(chat_id)
+        self.send_with_main_keyboard(
+            chat_id,
+            user_id,
+            "SBP price for post #{0} updated: {1} RUB.".format(
+                item_id, self.format_rub_amount(rub_price)
+            ),
+        )
+        self.send_admin_items(chat_id)
+        return True
+
+    def handle_buy_rub_command(self, chat_id, user, raw_value):
+        if not raw_value:
+            self.send_message(chat_id, "Usage: /buyrub <id>")
+            return
+
+        try:
+            item_id = int(raw_value.split()[0])
+        except ValueError:
+            self.send_message(chat_id, "Item id must be a number.")
+            return
+
+        item = self.get_item(item_id)
+        if not item:
+            self.send_message(chat_id, "Post not found.")
+            return
+
+        rub_price = self.item_rub_price(item)
+        if rub_price <= 0:
+            self.send_message(chat_id, "SBP price is not configured for this item yet.")
+            return
+
+        if not self.has_platega_credentials():
+            self.send_message(chat_id, "SBP payments are not configured yet.")
+            return
+
+        try:
+            order = self.create_platega_order(chat_id, user, item)
+        except Exception as exc:
+            LOG.exception("Unable to create Platega order")
+            self.send_message(chat_id, "Unable to create SBP payment: {0}".format(exc))
+            return
+
+        message_lines = [
+            "SBP order created.",
+            "Order: #{0}".format(order["id"]),
+            "Item: #{0} {1}".format(item["id"], item.get("title", "")),
+            "Amount: {0} RUB".format(self.format_rub_amount(order["amount_rub"])),
+        ]
+        payment_url = order.get("payment_url")
+        if payment_url:
+            message_lines.append("Pay here: {0}".format(payment_url))
+        message_lines.append("After confirmation I will send the media directly in this chat.")
+        self.send_message(chat_id, "\n".join(message_lines), disable_web_page_preview=True)
+
+    def send_orders_summary(self, chat_id):
+        if not self.orders["items"]:
+            self.send_message(chat_id, "No SBP orders yet.")
+            return
+
+        lines = ["Recent SBP orders:"]
+        for order in list(reversed(self.orders["items"]))[:10]:
+            lines.append(
+                "#{0} | item #{1} | {2} RUB | {3} | delivery: {4}".format(
+                    order["id"],
+                    order["item_id"],
+                    self.format_rub_amount(order.get("amount_rub", 0)),
+                    order.get("status", "-"),
+                    order.get("delivery_state", "-"),
+                )
+            )
+        self.send_message(chat_id, "\n".join(lines))
+
+    def handle_admin_command(self, message, command, args):
+        chat_id = message["chat"]["id"]
+        user_id = message.get("from", {}).get("id")
+
+        if command == "/admin":
+            if not self.is_admin(user_id):
+                self.send_message(chat_id, "Administrator access is required.")
+                return
+            self.show_admin_help(chat_id)
+            return
+
+        if command == "/setrubprice":
+            if not self.is_admin(user_id):
+                self.send_message(chat_id, "Administrator access is required.")
+                return
+            parts = args.split()
+            if len(parts) != 2:
+                self.send_message(chat_id, "Usage: /setrubprice <id> <rubles>")
+                return
+            try:
+                item_id = int(parts[0])
+                rub_price = round(float(parts[1].replace(",", ".")), 2)
+            except ValueError:
+                self.send_message(chat_id, "Item id and ruble price must be numeric.")
+                return
+            if rub_price < 0:
+                self.send_message(chat_id, "SBP price cannot be negative.")
+                return
+            item = self.get_item(item_id)
+            if not item:
+                self.send_message(chat_id, "Post not found.")
+                return
+            item["rub_price"] = rub_price
+            self.save_catalog()
+            self.send_message(
+                chat_id,
+                "SBP price for post #{0} updated: {1} RUB.".format(
+                    item_id, self.format_rub_amount(rub_price)
+                ),
+            )
+            return
+
+        if command == "/orders":
+            if not self.is_admin(user_id):
+                self.send_message(chat_id, "Administrator access is required.")
+                return
+            self.send_orders_summary(chat_id)
+            return
+
+        return self._legacy_handle_admin_command(message, command, args)
+
+    def handle_callback_query(self, query):
+        data = query.get("data", "")
+        callback_id = query.get("id")
+        from_user = query.get("from", {})
+        chat_id = from_user.get("id")
+        message_chat_id = query.get("message", {}).get("chat", {}).get("id") or chat_id
+
+        if data.startswith("buyrub:"):
+            try:
+                item_id = int(data.split(":", 1)[1])
+            except ValueError:
+                self.answer_callback(callback_id, "Invalid item id.", show_alert=True)
+                return
+            item = self.get_item(item_id)
+            if not item:
+                self.answer_callback(callback_id, "Post not found.", show_alert=True)
+                return
+            self.answer_callback(callback_id, "Creating SBP payment link...")
+            self.handle_buy_rub_command(chat_id, from_user, str(item_id))
+            return
+
+        if data.startswith("editrubprice:"):
+            if not self.is_admin(from_user.get("id")):
+                self.answer_callback(callback_id, "Admin only.", show_alert=True)
+                return
+            try:
+                item_id = int(data.split(":", 1)[1])
+            except ValueError:
+                self.answer_callback(callback_id, "Invalid item id.", show_alert=True)
+                return
+            item = self.get_item(item_id)
+            if not item:
+                self.answer_callback(callback_id, "Post not found.", show_alert=True)
+                return
+            self.set_pending_action(
+                message_chat_id,
+                {"type": "edit_rub_price", "item_id": item_id},
+            )
+            self.answer_callback(callback_id, "SBP price edit mode enabled.")
+            self.send_with_main_keyboard(
+                message_chat_id,
+                from_user.get("id"),
+                "Send new SBP price for post #{0}.\nCurrent: {1} RUB".format(
+                    item_id, self.format_rub_amount(self.item_rub_price(item))
+                ),
+            )
+            return
+
+        return self._legacy_handle_callback_query(query)
+
+    def handle_purchase_update(self, payload):
+        self.state["stats"]["stars_purchases"] += 1
+        self.save_state()
+        return self._legacy_handle_purchase_update(payload)
+
     def handle_message(self, message):
         chat_id = message["chat"]["id"]
         from_user = message.get("from", {})
@@ -1657,6 +2568,10 @@ class TelegramPaidMediaBot:
             self.handle_buy_command(chat_id, args)
             return
 
+        if command == "/buyrub":
+            self.handle_buy_rub_command(chat_id, from_user, args)
+            return
+
         if command in {
             "/admin",
             "/cancel",
@@ -1673,6 +2588,8 @@ class TelegramPaidMediaBot:
             "/balance",
             "/transactions",
             "/withdraw",
+            "/setrubprice",
+            "/orders",
         }:
             self.handle_admin_command(message, command, args)
             return
@@ -1720,6 +2637,7 @@ class TelegramPaidMediaBot:
                     self.update_status(last_update_id=int(update["update_id"]))
 
                 self.finalize_ready_pending_uploads(force=bool(updates))
+                self.check_pending_platega_orders()
             except KeyboardInterrupt:
                 raise
             except Exception as exc:
