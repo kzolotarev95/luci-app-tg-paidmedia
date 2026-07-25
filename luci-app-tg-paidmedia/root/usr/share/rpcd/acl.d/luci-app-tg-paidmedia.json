@@ -1,0 +1,39 @@
+{
+  "luci-app-tg-paidmedia": {
+    "description": "Grant access to Telegram Paid Media service configuration",
+    "read": {
+      "ubus": {
+        "file": [
+          "exec"
+        ],
+        "luci": [
+          "getInitList"
+        ]
+      },
+      "uci": [
+        "tg-paidmedia"
+      ],
+      "file": {
+        "/bin/cat /var/run/tg-paidmedia/status.json": [
+          "exec"
+        ],
+        "/etc/init.d/tg-paidmedia status": [
+          "exec"
+        ],
+        "/sbin/logread -e tg-paidmedia": [
+          "exec"
+        ]
+      }
+    },
+    "write": {
+      "ubus": {
+        "luci": [
+          "setInitAction"
+        ]
+      },
+      "uci": [
+        "tg-paidmedia"
+      ]
+    }
+  }
+}
