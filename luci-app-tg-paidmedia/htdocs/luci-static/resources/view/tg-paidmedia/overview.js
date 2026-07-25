@@ -674,7 +674,7 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.option(form.Value, 'platega_base_url', 'Базовый URL Platega');
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = 'https://app.platega.io';
 
 		o = s.option(form.Value, 'platega_merchant_id', 'ID мерчанта Platega');
@@ -698,31 +698,31 @@ return view.extend({
 		o.rmempty = true;
 
 		o = s.option(form.Value, 'platega_webhook_host', 'Хост прослушивания webhook');
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = '0.0.0.0';
 
 		o = s.option(form.Value, 'platega_webhook_port', 'Порт прослушивания webhook');
 		o.datatype = 'port';
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = '8099';
 
 		o = s.option(form.Value, 'platega_webhook_path', 'Путь webhook');
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = '/platega/webhook';
 
 		o = s.option(form.Value, 'platega_status_poll_interval', 'Интервал опроса статуса СБП (секунды)');
 		o.datatype = 'uinteger';
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = '20';
 
 		o = s.option(form.Value, 'platega_status_timeout', 'Таймаут ожидания статуса СБП (секунды)');
 		o.datatype = 'uinteger';
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = '900';
 
 		o = s.option(form.Value, 'platega_http_timeout', 'HTTP-таймаут Platega (секунды)');
 		o.datatype = 'uinteger';
-		o.rmempty = false;
+		o.rmempty = true;
 		o.placeholder = '25';
 
 		o = s.option(form.Value, 'catalog_path', '\u041f\u0443\u0442\u044c \u043a \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0443');
