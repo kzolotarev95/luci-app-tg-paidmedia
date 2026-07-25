@@ -567,6 +567,14 @@ class TelegramPaidMediaBot:
             )
         return {"inline_keyboard": rows} if rows else None
 
+    def send_catalog(self, chat_id, user_id=None):
+        include_admin = user_id is not None and self.is_admin(user_id)
+        return self.send_message(
+            chat_id,
+            self.build_catalog_text(include_admin_hint=include_admin),
+            reply_markup=self.build_catalog_keyboard(),
+        )
+
     def build_admin_items_text(self):
         if not self.catalog["items"]:
             return "\n".join(
