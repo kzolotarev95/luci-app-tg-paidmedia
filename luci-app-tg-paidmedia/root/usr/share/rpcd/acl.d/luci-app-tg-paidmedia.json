@@ -27,13 +27,21 @@
     },
     "write": {
       "ubus": {
+        "file": [
+          "exec"
+        ],
         "luci": [
           "setInitAction"
         ]
       },
       "uci": [
         "tg-paidmedia"
-      ]
+      ],
+      "file": {
+        "/etc/init.d/log restart": [
+          "exec"
+        ]
+      }
     }
   }
 }

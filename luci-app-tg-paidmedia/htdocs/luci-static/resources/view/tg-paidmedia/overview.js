@@ -823,6 +823,28 @@ return view.extend({
 		});
 	},
 
+	clearLogs: function(statusTarget, logTarget) {
+		ui.showModal('\u041e\u0447\u0438\u0441\u0442\u043a\u0430 \u0436\u0443\u0440\u043d\u0430', [
+			E('p', {}, [ '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430\u044e \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0439 log-\u0434\u0435\u043c\u043e\u043d, \u0447\u0442\u043e\u0431\u044b \u043e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 ring buffer...' ])
+		]);
+
+		return fs.exec('/etc/init.d/log', [ 'restart' ]).then(function(result) {
+			if (result.code !== 0)
+				throw new Error(result.stderr || '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0436\u0443\u0440\u043d\u0430\u043b.');
+
+			return delay(1200);
+		}).then(function() {
+			return this.load();
+		}.bind(this)).then(function(data) {
+			ui.hideModal();
+			this.updatePanels(statusTarget, logTarget, data);
+			ui.addNotification(null, E('p', {}, [ '\u0416\u0443\u0440\u043d\u0430\u043b \u043e\u0447\u0438\u0449\u0435\u043d. \u0422\u0435\u043f\u0435\u0440\u044c \u0432 \u0431\u043B\u043E\u043A\u0435 \u0432\u0438\u0434\u0435\u043D \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0432\u0435\u0436\u0438\u0439 \u0445\u0432\u043E\u0441\u0442 \u043F\u043E\u0441\u043B\u0435 \u043F\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043A\u0430 logd.' ]), 'info');
+		}.bind(this)).catch(function(err) {
+			ui.hideModal();
+			ui.addNotification(null, E('p', {}, [ err.message || String(err) ]), 'danger');
+		});
+	},
+
 	pollPanels: function(statusTarget, logTarget) {
 		return this.load().then(function(data) {
 			this.updatePanels(statusTarget, logTarget, data);
@@ -884,6 +906,12 @@ return view.extend({
 				return this.copyLog(logTarget);
 			})
 		}, [ '\uD83D\uDCCB \u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u043B\u043E\u0433' ]);
+		var logClear = E('button', {
+			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-log-clear',
+			'click': ui.createHandlerFn(this, function() {
+				return this.clearLogs(statusTarget, logTarget);
+			})
+		}, [ '\uD83E\uDDF9 \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u043B\u043E\u0433\u0438' ]);
 		var logSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-log-panel is-collapsed' }, [
 			E('div', { 'class': 'tg-paidmedia-section-head' }, [
 				E('div', {}, [
@@ -892,7 +920,8 @@ return view.extend({
 				]),
 				E('div', { 'class': 'tg-paidmedia-log-toolbar' }, [
 					logToggle,
-					logCopy
+					logCopy,
+					logClear
 				])
 			]),
 			E('div', { 'class': 'tg-paidmedia-log-body' }, [
