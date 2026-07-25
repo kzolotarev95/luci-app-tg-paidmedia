@@ -431,22 +431,53 @@ class TelegramPaidMediaBot:
             payload["disable_web_page_preview"] = bool(disable_web_page_preview)
         return self.api_call("sendMessage", payload)
 
+    def menu_labels(self):
+        return {
+            "catalog": "📚 Каталог",
+            "how_to_buy": "⭐ Как купить Stars",
+            "create_photo_post": "🖼 Создать фото-пост",
+            "create_video_post": "🎬 Создать видео-пост",
+            "my_posts": "🗂 Мои посты",
+            "balance": "💰 Баланс Stars",
+            "transactions": "📈 Операции Stars",
+            "admin_help": "🛠 Помощь админа",
+            "back": "⬅️ Назад",
+            "cancel": "❌ Отмена",
+        }
+
+    def is_menu_button(self, text, key):
+        labels = self.menu_labels()
+        legacy = {
+            "catalog": {"Каталог"},
+            "how_to_buy": {"Как купить"},
+            "create_photo_post": {"Создать фото-пост"},
+            "create_video_post": {"Создать видео-пост"},
+            "my_posts": {"Мои посты"},
+            "balance": {"Баланс Stars"},
+            "transactions": {"Операции Stars"},
+            "admin_help": {"Помощь админа"},
+            "back": {"Назад"},
+            "cancel": {"Отмена"},
+        }
+        return text in {labels[key], *legacy.get(key, set())}
+
     def build_main_keyboard(self, user_id=None):
+        labels = self.menu_labels()
         rows = [
-            [{"text": "Каталог"}, {"text": "Как купить"}],
+            [{"text": labels["catalog"]}, {"text": labels["how_to_buy"]}],
         ]
 
         if user_id is not None and self.is_admin(user_id):
             rows.extend(
                 [
-                    [{"text": "Создать фото-пост"}, {"text": "Создать видео-пост"}],
-                    [{"text": "Мои посты"}, {"text": "Баланс Stars"}],
-                    [{"text": "Операции Stars"}, {"text": "Помощь админа"}],
-                    [{"text": "Назад"}, {"text": "Отмена"}],
+                    [{"text": labels["create_photo_post"]}, {"text": labels["create_video_post"]}],
+                    [{"text": labels["my_posts"]}, {"text": labels["balance"]}],
+                    [{"text": labels["transactions"]}, {"text": labels["admin_help"]}],
+                    [{"text": labels["back"]}, {"text": labels["cancel"]}],
                 ]
             )
         else:
-            rows.append([{"text": "Назад"}])
+            rows.append([{"text": labels["back"]}])
 
         return {
             "keyboard": rows,
@@ -657,11 +688,11 @@ class TelegramPaidMediaBot:
             rows.append(
                 [
                     {
-                        "text": "Опубликовать #{0}".format(item["id"]),
+                        "text": "🚀 Опубликовать #{0}".format(item["id"]),
                         "callback_data": "publish:{0}".format(item["id"]),
                     },
                     {
-                        "text": "Удалить #{0}".format(item["id"]),
+                        "text": "🗑 Удалить #{0}".format(item["id"]),
                         "callback_data": "delete:{0}".format(item["id"]),
                     },
                 ]
@@ -804,7 +835,7 @@ class TelegramPaidMediaBot:
         from_user = message.get("from", {})
         user_id = from_user.get("id")
 
-        if text == "Каталог":
+        if self.is_menu_button(text, "catalog"):
             self.send_with_main_keyboard(
                 chat_id,
                 user_id,
@@ -813,7 +844,7 @@ class TelegramPaidMediaBot:
             self.send_catalog(chat_id, user_id=user_id)
             return True
 
-        if text == "Как купить":
+        if self.is_menu_button(text, "how_to_buy"):
             self.send_message(
                 chat_id,
                 "Купить звезды дешево можно тут 👉 ⭐️[купить звезды ⭐️](https://t.me/starslly_bot?start=6745392042)",
@@ -826,7 +857,7 @@ class TelegramPaidMediaBot:
         if not self.is_admin(user_id):
             return False
 
-        if text == "Создать фото-пост":
+        if self.is_menu_button(text, "create_photo_post"):
             self.set_pending_action(chat_id, {"type": "create_photo_post"})
             self.send_with_main_keyboard(
                 chat_id,
@@ -835,7 +866,7 @@ class TelegramPaidMediaBot:
             )
             return True
 
-        if text == "Создать видео-пост":
+        if self.is_menu_button(text, "create_video_post"):
             self.set_pending_action(chat_id, {"type": "create_video_post"})
             self.send_with_main_keyboard(
                 chat_id,
@@ -844,23 +875,23 @@ class TelegramPaidMediaBot:
             )
             return True
 
-        if text == "Мои посты":
+        if self.is_menu_button(text, "my_posts"):
             self.send_admin_items(chat_id)
             return True
 
-        if text == "Баланс Stars":
+        if self.is_menu_button(text, "balance"):
             self.handle_admin_command(message, "/balance", "")
             return True
 
-        if text == "Операции Stars":
+        if self.is_menu_button(text, "transactions"):
             self.handle_admin_command(message, "/transactions", "")
             return True
 
-        if text == "Помощь админа":
+        if self.is_menu_button(text, "admin_help"):
             self.show_admin_help(chat_id)
             return True
 
-        if text == "Назад":
+        if self.is_menu_button(text, "back"):
             self.clear_pending_action(chat_id)
             self.clear_pending_upload(chat_id)
             self.send_with_main_keyboard(
@@ -870,7 +901,7 @@ class TelegramPaidMediaBot:
             )
             return True
 
-        if text == "Отмена":
+        if self.is_menu_button(text, "cancel"):
             self.clear_pending_action(chat_id)
             self.clear_pending_upload(chat_id)
             self.send_with_main_keyboard(
