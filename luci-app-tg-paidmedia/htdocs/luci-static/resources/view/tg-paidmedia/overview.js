@@ -670,57 +670,57 @@ return view.extend({
 		o = s.option(form.Flag, 'drop_pending', '\u0421\u0431\u0440\u0430\u0441\u044b\u0432\u0430\u0442\u044c \u043d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f Telegram \u043f\u0440\u0438 \u0441\u0442\u0430\u0440\u0442\u0435');
 		o.rmempty = false;
 
-		o = s.option(form.Flag, 'platega_enabled', 'Platega / SBP enabled');
+		o = s.option(form.Flag, 'platega_enabled', 'Включить Platega / СБП');
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'platega_base_url', 'Platega base URL');
+		o = s.option(form.Value, 'platega_base_url', 'Базовый URL Platega');
 		o.rmempty = false;
 		o.placeholder = 'https://app.platega.io';
 
-		o = s.option(form.Value, 'platega_merchant_id', 'Platega merchant ID');
+		o = s.option(form.Value, 'platega_merchant_id', 'ID мерчанта Platega');
 		o.rmempty = true;
 
-		o = s.option(form.Value, 'platega_secret_key', 'Platega secret key');
+		o = s.option(form.Value, 'platega_secret_key', 'Секретный ключ Platega');
 		o.password = true;
 		o.rmempty = true;
 
-		o = s.option(form.Value, 'platega_callback_url', 'Platega callback URL');
+		o = s.option(form.Value, 'platega_callback_url', 'URL callback для Platega');
 		o.rmempty = true;
 		o.placeholder = 'https://example.com/platega/webhook';
 
-		o = s.option(form.Value, 'platega_success_url', 'Success redirect URL');
+		o = s.option(form.Value, 'platega_success_url', 'URL успешного редиректа');
 		o.rmempty = true;
 
-		o = s.option(form.Value, 'platega_fail_url', 'Fail redirect URL');
+		o = s.option(form.Value, 'platega_fail_url', 'URL редиректа при ошибке');
 		o.rmempty = true;
 
-		o = s.option(form.Value, 'platega_redirect_url', 'Default redirect URL');
+		o = s.option(form.Value, 'platega_redirect_url', 'URL редиректа по умолчанию');
 		o.rmempty = true;
 
-		o = s.option(form.Value, 'platega_webhook_host', 'Webhook listen host');
+		o = s.option(form.Value, 'platega_webhook_host', 'Хост прослушивания webhook');
 		o.rmempty = false;
 		o.placeholder = '0.0.0.0';
 
-		o = s.option(form.Value, 'platega_webhook_port', 'Webhook listen port');
+		o = s.option(form.Value, 'platega_webhook_port', 'Порт прослушивания webhook');
 		o.datatype = 'port';
 		o.rmempty = false;
 		o.placeholder = '8099';
 
-		o = s.option(form.Value, 'platega_webhook_path', 'Webhook path');
+		o = s.option(form.Value, 'platega_webhook_path', 'Путь webhook');
 		o.rmempty = false;
 		o.placeholder = '/platega/webhook';
 
-		o = s.option(form.Value, 'platega_status_poll_interval', 'SBP status poll interval (seconds)');
+		o = s.option(form.Value, 'platega_status_poll_interval', 'Интервал опроса статуса СБП (секунды)');
 		o.datatype = 'uinteger';
 		o.rmempty = false;
 		o.placeholder = '20';
 
-		o = s.option(form.Value, 'platega_status_timeout', 'SBP status timeout (seconds)');
+		o = s.option(form.Value, 'platega_status_timeout', 'Таймаут ожидания статуса СБП (секунды)');
 		o.datatype = 'uinteger';
 		o.rmempty = false;
 		o.placeholder = '900';
 
-		o = s.option(form.Value, 'platega_http_timeout', 'Platega HTTP timeout (seconds)');
+		o = s.option(form.Value, 'platega_http_timeout', 'HTTP-таймаут Platega (секунды)');
 		o.datatype = 'uinteger';
 		o.rmempty = false;
 		o.placeholder = '25';
