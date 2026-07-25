@@ -1,17 +1,4 @@
 {
-  "tg-paidmedia": {
-    "title": "TG Paid Media",
-    "order": 12,
-    "action": {
-      "type": "view",
-      "path": "tg-paidmedia/overview"
-    },
-    "depends": {
-      "acl": [
-        "luci-app-tg-paidmedia"
-      ]
-    }
-  },
   "admin/services/tg-paidmedia": {
     "title": "TG Paid Media",
     "order": 95,
