@@ -12,6 +12,7 @@ SRC_ROOT="${TMP_DIR}/src"
 REPO_ROOT="${SRC_ROOT}/${REPO_NAME}-${REPO_BRANCH}"
 TRACK_FILE="/usr/libexec/tg-paidmedia/installed-packages.list"
 TRACKED_PACKAGES=""
+PKG_MANAGER=""
 
 log() {
 	printf '%s\n' "$*"
@@ -44,6 +45,20 @@ load_tracked_packages() {
 	fi
 }
 
+detect_package_manager() {
+	if command_exists apk; then
+		PKG_MANAGER="apk"
+		return 0
+	fi
+
+	if command_exists opkg; then
+		PKG_MANAGER="opkg"
+		return 0
+	fi
+
+	fail "apk or opkg is required"
+}
+
 track_package() {
 	local pkg="$1"
 
@@ -69,7 +84,14 @@ save_tracked_packages() {
 }
 
 pkg_installed() {
-	opkg list-installed "$1" 2>/dev/null | grep -q "^$1 - "
+	local pkg="$1"
+
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		apk info -e "$pkg" >/dev/null 2>&1
+		return $?
+	fi
+
+	opkg list-installed "$pkg" 2>/dev/null | grep -q "^$pkg - "
 }
 
 ensure_pkg() {
@@ -80,7 +102,11 @@ ensure_pkg() {
 	fi
 
 	log "Installing package: $pkg"
-	opkg install "$pkg"
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		apk add "$pkg"
+	else
+		opkg install "$pkg"
+	fi
 	track_package "$pkg"
 }
 
@@ -94,13 +120,22 @@ ensure_python() {
 	fi
 
 	log "Installing package: python3-light"
-	if opkg install python3-light; then
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		if apk add python3-light; then
+			track_package "python3-light"
+			return 0
+		fi
+	elif opkg install python3-light; then
 		track_package "python3-light"
 		return 0
 	fi
 
 	log "Falling back to python3"
-	opkg install python3
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		apk add python3
+	else
+		opkg install python3
+	fi
 	track_package "python3"
 }
 
@@ -217,10 +252,16 @@ start_service() {
 
 main() {
 	require_root
+	detect_package_manager
 	load_tracked_packages
 
-	log "Updating opkg indexes"
-	opkg update
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		log "Updating apk indexes"
+		apk update
+	else
+		log "Updating opkg indexes"
+		opkg update
+	fi
 
 	ensure_python
 	ensure_pkg ca-bundle
