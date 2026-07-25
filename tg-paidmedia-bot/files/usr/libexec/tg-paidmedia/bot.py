@@ -79,6 +79,21 @@ def atomic_write_json(path, payload):
     os.replace(temp_path, path)
 
 
+def write_fatal_status(path, message, exception_text):
+    status = load_json(path, {})
+    status["started_at"] = status.get("started_at") or utc_now()
+    status["last_error"] = message
+    status["last_exception"] = exception_text
+    status["last_poll_at"] = utc_now()
+    status.setdefault("catalog_items", 0)
+    status.setdefault("admin_count", 0)
+    status.setdefault("bot_username", "")
+    status.setdefault("last_purchase", {})
+    status.setdefault("last_balance", {})
+    status.setdefault("stats", {})
+    atomic_write_json(path, status)
+
+
 def safe_caption(value):
     value = (value or "").strip()
     return value[:1024]
@@ -864,10 +879,32 @@ def main():
         format="tg-paidmedia: %(asctime)s %(levelname)s %(message)s",
     )
 
-    bot = TelegramPaidMediaBot()
-    LOG.info("Starting Telegram Paid Media bot")
-    bot.write_status()
-    bot.run()
+    status_path = os.environ.get("TG_STATUS_PATH", "/var/run/tg-paidmedia/status.json")
+
+    try:
+        bot = TelegramPaidMediaBot()
+        LOG.info("Starting Telegram Paid Media bot")
+        bot.write_status()
+        bot.run()
+    except KeyboardInterrupt:
+        raise
+    except Exception as exc:
+        exception_text = traceback.format_exc(limit=12)
+        LOG.exception("Fatal startup error")
+
+        try:
+            if "bot" in locals():
+                bot.update_status(
+                    last_error=str(exc),
+                    last_exception=exception_text,
+                    last_poll_at=utc_now(),
+                )
+            else:
+                write_fatal_status(status_path, str(exc), exception_text)
+        except Exception:
+            LOG.exception("Unable to write fatal status")
+
+        raise
 
 
 if __name__ == "__main__":

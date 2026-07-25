@@ -41,8 +41,14 @@ function trimLog(text, lines) {
 	return parts.slice(parts.length - lines).join('\n');
 }
 
+function delay(ms) {
+	return new Promise(function(resolve) {
+		window.setTimeout(resolve, ms);
+	});
+}
+
 function boolLabel(value) {
-	return value ? 'Да' : 'Нет';
+	return value ? '\u0414\u0430' : '\u041d\u0435\u0442';
 }
 
 return view.extend({
@@ -267,50 +273,50 @@ return view.extend({
 		var m, s, o;
 
 		m = new form.Map('tg-paidmedia', 'TG Paid Media');
-		m.description = 'Настройте токен бота, администраторов, параметры long polling и пути хранения данных.';
+		m.description = '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u0442\u0435 \u0442\u043e\u043a\u0435\u043d \u0431\u043e\u0442\u0430, \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u043e\u0432, \u043f\u0430\u0440\u0430\u043c\u0435\u0442\u0440\u044b long polling \u0438 \u043f\u0443\u0442\u0438 \u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f \u0434\u0430\u043d\u043d\u044b\u0445.';
 
-		s = m.section(form.TypedSection, 'bot', 'Настройки бота');
+		s = m.section(form.TypedSection, 'bot', '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0431\u043e\u0442\u0430');
 		s.anonymous = true;
 
-		o = s.option(form.Flag, 'enabled', 'Включить сервис');
+		o = s.option(form.Flag, 'enabled', '\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0438\u0441');
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'token', 'Токен бота');
+		o = s.option(form.Value, 'token', '\u0422\u043e\u043a\u0435\u043d \u0431\u043e\u0442\u0430');
 		o.password = true;
 		o.rmempty = false;
 		o.placeholder = '123456:ABCDEF';
 
-		o = s.option(form.DynamicList, 'admin_ids', 'Telegram ID администраторов');
+		o = s.option(form.DynamicList, 'admin_ids', 'Telegram ID \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u043e\u0432');
 		o.datatype = 'uinteger';
 		o.placeholder = '123456789';
 
-		o = s.option(form.Value, 'bot_title', 'Название магазина');
+		o = s.option(form.Value, 'bot_title', '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430');
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'welcome_text', 'Приветственный текст');
+		o = s.option(form.Value, 'welcome_text', '\u041f\u0440\u0438\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439 \u0442\u0435\u043a\u0441\u0442');
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'poll_timeout', 'Таймаут long polling (секунды)');
+		o = s.option(form.Value, 'poll_timeout', '\u0422\u0430\u0439\u043c\u0430\u0443\u0442 long polling (\u0441\u0435\u043a\u0443\u043d\u0434\u044b)');
 		o.datatype = 'uinteger';
 		o.placeholder = '25';
 		o.rmempty = false;
 
-		o = s.option(form.Flag, 'drop_pending', 'Сбрасывать накопленные обновления Telegram при старте');
+		o = s.option(form.Flag, 'drop_pending', '\u0421\u0431\u0440\u0430\u0441\u044b\u0432\u0430\u0442\u044c \u043d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f Telegram \u043f\u0440\u0438 \u0441\u0442\u0430\u0440\u0442\u0435');
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'catalog_path', 'Путь к каталогу');
+		o = s.option(form.Value, 'catalog_path', '\u041f\u0443\u0442\u044c \u043a \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0443');
 		o.rmempty = false;
 		o.placeholder = '/etc/tg-paidmedia/catalog.json';
 
-		o = s.option(form.Value, 'data_dir', 'Каталог данных');
+		o = s.option(form.Value, 'data_dir', '\u041a\u0430\u0442\u0430\u043b\u043e\u0433 \u0434\u0430\u043d\u043d\u044b\u0445');
 		o.rmempty = false;
 		o.placeholder = '/var/lib/tg-paidmedia';
 
-		o = s.option(form.Value, 'state_path', 'Путь к файлу состояния');
+		o = s.option(form.Value, 'state_path', '\u041f\u0443\u0442\u044c \u043a \u0444\u0430\u0439\u043b\u0443 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f');
 		o.rmempty = false;
 		o.placeholder = '/var/lib/tg-paidmedia/state.json';
 
-		o = s.option(form.Value, 'status_path', 'Путь к файлу статуса');
+		o = s.option(form.Value, 'status_path', '\u041f\u0443\u0442\u044c \u043a \u0444\u0430\u0439\u043b\u0443 \u0441\u0442\u0430\u0442\u0443\u0441\u0430');
 		o.rmempty = false;
 		o.placeholder = '/var/run/tg-paidmedia/status.json';
 
@@ -340,22 +346,20 @@ return view.extend({
 		var lastPurchase = botStatus.last_purchase || {};
 		var runningBadge = E('span', {
 			'class': 'tg-paidmedia-badge ' + (serviceMeta.running ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped')
-		}, [ serviceMeta.running ? 'Запущен' : 'Остановлен' ]);
+		}, [ serviceMeta.running ? '\u0417\u0430\u043f\u0443\u0449\u0435\u043d' : '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d' ]);
 		var cards = [
-			{ label: 'Сервис', value: runningBadge },
-			{ label: 'Автозапуск', value: boolLabel(!!initMeta.enabled) },
-			{ label: 'PID процесса', value: String(serviceMeta.pid || '-') },
-			{ label: 'Имя бота', value: String(botStatus.bot_username || '-') },
-			{ label: 'Товаров в каталоге', value: String(botStatus.catalog_items || 0) },
-			{ label: 'Администраторов', value: String(botStatus.admin_count || 0) },
-			{ label: 'Баланс Stars', value: String(balance.amount || 0) },
-			{ label: 'Последний опрос', value: String(botStatus.last_poll_at || '-'), subtle: true },
-			{ label: 'Последняя ошибка', value: String(botStatus.last_error || '-'), subtle: true },
+			{ label: '\u0421\u0435\u0440\u0432\u0438\u0441', value: runningBadge },
+			{ label: '\u0410\u0432\u0442\u043e\u0437\u0430\u043f\u0443\u0441\u043a', value: boolLabel(!!initMeta.enabled) },
+			{ label: 'PID \u043f\u0440\u043e\u0446\u0435\u0441\u0441\u0430', value: String(serviceMeta.pid || '-') },
+			{ label: '\u0418\u043c\u044f \u0431\u043e\u0442\u0430', value: String(botStatus.bot_username || '-') },
+			{ label: '\u0422\u043e\u0432\u0430\u0440\u043e\u0432 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435', value: String(botStatus.catalog_items || 0) },
+			{ label: '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u043e\u0432', value: String(botStatus.admin_count || 0) },
+			{ label: '\u0411\u0430\u043b\u0430\u043d\u0441 Stars', value: String(balance.amount || 0) },
+			{ label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u043e\u043f\u0440\u043e\u0441', value: String(botStatus.last_poll_at || '-'), subtle: true },
+			{ label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u043e\u0448\u0438\u0431\u043a\u0430', value: String(botStatus.last_error || '-'), subtle: true },
 			{
-				label: 'Последняя покупка',
-				value: lastPurchase.item_id ?
-					String('#' + lastPurchase.item_id + ' ' + (lastPurchase.item_title || '')) :
-					'-',
+				label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u043f\u043e\u043a\u0443\u043f\u043a\u0430',
+				value: lastPurchase.item_id ? String('#' + lastPurchase.item_id + ' ' + (lastPurchase.item_title || '')) : '-',
 				subtle: true
 			}
 		];
@@ -365,24 +369,24 @@ return view.extend({
 				'click': ui.createHandlerFn(this, function() {
 					return this.handleServiceAction('start', statusTarget, logTarget);
 				})
-			}, [ 'Запустить' ]),
+			}, [ '\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c' ]),
 			E('button', {
 				'class': 'btn cbi-button cbi-button-action',
 				'click': ui.createHandlerFn(this, function() {
 					return this.handleServiceAction('restart', statusTarget, logTarget);
 				})
-			}, [ 'Перезапустить' ]),
+			}, [ '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c' ]),
 			E('button', {
 				'class': 'btn cbi-button cbi-button-negative',
 				'click': ui.createHandlerFn(this, function() {
 					return this.handleServiceAction('stop', statusTarget, logTarget);
 				})
-			}, [ 'Остановить' ])
+			}, [ '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c' ])
 		]);
 
 		return E('div', { 'class': 'tg-paidmedia-section' }, [
-			E('h3', {}, [ 'Состояние сервиса' ]),
-			E('p', { 'class': 'tg-paidmedia-note' }, [ 'Быстрый обзор работы бота, баланса Stars и последних событий без перехода в логи.' ]),
+			E('h3', {}, [ '\u0421\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u0430' ]),
+			E('p', { 'class': 'tg-paidmedia-note' }, [ '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0431\u0437\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u044b \u0431\u043e\u0442\u0430, \u0431\u0430\u043b\u0430\u043d\u0441\u0430 Stars \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u0432 \u043b\u043e\u0433\u0438.' ]),
 			E('div', { 'class': 'tg-paidmedia-grid' }, cards.map(function(card) {
 				return E('div', { 'class': 'tg-paidmedia-card' }, [
 					E('p', { 'class': 'tg-paidmedia-card-label' }, [ card.label ]),
@@ -397,7 +401,7 @@ return view.extend({
 
 	updatePanels: function(statusTarget, logTarget, data) {
 		dom.content(statusTarget, this.buildStatusSection(data, statusTarget, logTarget));
-		logTarget.textContent = trimLog((data[3] || {}).stdout || '', 200) || 'Логи пока пусты.';
+		logTarget.textContent = trimLog((data[3] || {}).stdout || '', 200) || '\u041b\u043e\u0433\u0438 \u043f\u043e\u043a\u0430 \u043f\u0443\u0441\u0442\u044b.';
 	},
 
 	pollPanels: function(statusTarget, logTarget) {
@@ -407,17 +411,38 @@ return view.extend({
 	},
 
 	handleServiceAction: function(action, statusTarget, logTarget) {
-		ui.showModal('Выполняется', [
-			E('p', {}, [ 'Применяю команду к сервису...' ])
+		var actionLabel = {
+			start: '\u0437\u0430\u043f\u0443\u0441\u043a\u0430',
+			restart: '\u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430',
+			stop: '\u043e\u0441\u0442\u0430\u043d\u043e\u0432\u043a\u0430'
+		}[action] || '\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435';
+
+		ui.showModal('\u0412\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f', [
+			E('p', {}, [ '\u041f\u0440\u0438\u043c\u0435\u043d\u044f\u044e \u043a\u043e\u043c\u0430\u043d\u0434\u0443 \u043a \u0441\u0435\u0440\u0432\u0438\u0441\u0443...' ])
 		]);
 
-		return callInitAction('tg-paidmedia', action).then(function(result) {
+		return callInitAction('tg-paidmedia', action).then(function() {
 			ui.hideModal();
+			return delay(900);
+		}.bind(this)).then(function() {
+			return this.load();
+		}.bind(this)).then(function(data) {
+			var serviceStatus = parseJSON((data[1] || {}).stdout, {});
+			var botStatus = parseJSON((data[2] || {}).stdout, {});
+			var serviceMeta = this.extractServiceRunning(serviceStatus);
 
-			if (!result || result.result !== true)
-				throw new Error('Не удалось выполнить действие над сервисом');
+			this.updatePanels(statusTarget, logTarget, data);
 
-			return this.pollPanels(statusTarget, logTarget);
+			if (action === 'stop' && serviceMeta.running) {
+				throw new Error('\u0421\u0435\u0440\u0432\u0438\u0441 \u043f\u043e\u043a\u0430 \u0435\u0449\u0435 \u043d\u0435 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u043b\u0441\u044f. \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0447\u0435\u0440\u0435\u0437 \u043f\u0430\u0440\u0443 \u0441\u0435\u043a\u0443\u043d\u0434.');
+			}
+
+			if (action !== 'stop' && !serviceMeta.running) {
+				throw new Error(
+					(botStatus.last_error && String(botStatus.last_error).trim()) ||
+					('\u0421\u0435\u0440\u0432\u0438\u0441 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u043b\u0441\u044f \u043f\u043e\u0441\u043b\u0435 ' + actionLabel + '. \u041f\u043e\u0441\u043c\u043e\u0442\u0440\u0438\u0442\u0435 \u0436\u0443\u0440\u043d\u0430\u043b \u043d\u0438\u0436\u0435.')
+				);
+			}
 		}.bind(this)).catch(function(err) {
 			ui.hideModal();
 			ui.addNotification(null, E('p', {}, [ err.message || String(err) ]), 'danger');
@@ -425,11 +450,11 @@ return view.extend({
 	},
 
 	render: function(data) {
-		var statusTarget = E('div', { 'class': 'tg-paidmedia-section' }, [ 'Загрузка статуса...' ]);
-		var logTarget = E('pre', { 'class': 'tg-paidmedia-log' }, [ 'Загрузка логов...' ]);
+		var statusTarget = E('div', { 'class': 'tg-paidmedia-section' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0441\u0442\u0430\u0442\u0443\u0441\u0430...' ]);
+		var logTarget = E('pre', { 'class': 'tg-paidmedia-log' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043b\u043e\u0433\u043e\u0432...' ]);
 		var logSection = E('div', { 'class': 'tg-paidmedia-section' }, [
-			E('h3', {}, [ 'Журнал событий' ]),
-			E('p', { 'class': 'tg-paidmedia-note' }, [ 'Показаны последние 200 строк из logread по сервису tg-paidmedia.' ]),
+			E('h3', {}, [ '\u0416\u0443\u0440\u043d\u0430\u043b \u0441\u043e\u0431\u044b\u0442\u0438\u0439' ]),
+			E('p', { 'class': 'tg-paidmedia-note' }, [ '\u041f\u043e\u043a\u0430\u0437\u0430\u043d\u044b \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 200 \u0441\u0442\u0440\u043e\u043a \u0438\u0437 logread \u043f\u043e \u0441\u0435\u0440\u0432\u0438\u0441\u0443 tg-paidmedia.' ]),
 			logTarget
 		]);
 
@@ -440,9 +465,9 @@ return view.extend({
 			return E('div', { 'class': 'tg-paidmedia-page' }, [
 				this.renderStyles(),
 				E('div', { 'class': 'tg-paidmedia-hero' }, [
-					E('p', { 'class': 'tg-paidmedia-kicker' }, [ 'Управление магазином Telegram Stars' ]),
-					E('h2', { 'class': 'tg-paidmedia-title' }, [ 'Панель управления TG Paid Media' ]),
-					E('p', { 'class': 'tg-paidmedia-lead' }, [ 'Здесь можно быстро проверить состояние бота, перезапустить сервис и настроить магазин Telegram Stars в более аккуратном и читаемом виде.' ])
+					E('p', { 'class': 'tg-paidmedia-kicker' }, [ '\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u043e\u043c Telegram Stars' ]),
+					E('h2', { 'class': 'tg-paidmedia-title' }, [ '\u041f\u0430\u043d\u0435\u043b\u044c \u0443\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f TG Paid Media' ]),
+					E('p', { 'class': 'tg-paidmedia-lead' }, [ '\u0417\u0434\u0435\u0441\u044c \u043c\u043e\u0436\u043d\u043e \u0431\u044b\u0441\u0442\u0440\u043e \u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0431\u043e\u0442\u0430, \u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0438\u0441 \u0438 \u043d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u043c\u0430\u0433\u0430\u0437\u0438\u043d Telegram Stars \u0432 \u0431\u043e\u043b\u0435\u0435 \u0430\u043a\u043a\u0443\u0440\u0430\u0442\u043d\u043e\u043c \u0438 \u0447\u0438\u0442\u0430\u0435\u043c\u043e\u043c \u0432\u0438\u0434\u0435.' ])
 				]),
 				statusTarget,
 				logSection,
