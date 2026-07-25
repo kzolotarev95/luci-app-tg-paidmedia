@@ -167,6 +167,29 @@ def safe_caption(value):
     return value[:1024]
 
 
+def normalize_media_entries(item, fallback_kind):
+    entries = []
+
+    for raw_entry in item.get("media") or []:
+        if not isinstance(raw_entry, dict):
+            continue
+
+        entry_type = str(raw_entry.get("type") or fallback_kind or "").strip().lower()
+        file_id = str(raw_entry.get("file_id") or raw_entry.get("media") or "").strip()
+        if entry_type not in {"photo", "video"} or not file_id:
+            continue
+
+        entries.append({"type": entry_type, "file_id": file_id})
+
+    legacy_file_id = str(item.get("file_id") or "").strip()
+    if not entries and legacy_file_id:
+        legacy_type = str(fallback_kind or item.get("kind") or "photo").strip().lower()
+        if legacy_type in {"photo", "video"}:
+            entries.append({"type": legacy_type, "file_id": legacy_file_id})
+
+    return entries[:10]
+
+
 def compact_name(user):
     if not user:
         return "unknown"
@@ -267,7 +290,7 @@ class TelegramPaidMediaBot:
         for item in self.catalog.get("items", []):
             if not isinstance(item, dict):
                 continue
-            if not item.get("id") or not item.get("file_id") or not item.get("kind"):
+            if not item.get("id") or not item.get("kind"):
                 continue
             try:
                 item_id = int(item["id"])
@@ -279,8 +302,14 @@ class TelegramPaidMediaBot:
             if kind not in {"photo", "video"}:
                 continue
 
+            media_entries = normalize_media_entries(item, kind)
+            if not media_entries:
+                continue
+
             item["id"] = item_id
-            item["kind"] = kind
+            item["kind"] = media_entries[0]["type"]
+            item["media"] = media_entries
+            item["file_id"] = media_entries[0]["file_id"]
             item["title"] = (item.get("title") or "Item {0}".format(item_id)).strip() or "Item {0}".format(item_id)
             item["caption"] = safe_caption(item.get("caption", ""))
             item["price"] = price
@@ -723,15 +752,14 @@ class TelegramPaidMediaBot:
         )
 
     def send_paid_item(self, chat_id, item):
+        media_payload = [
+            {"type": entry["type"], "media": entry["file_id"]}
+            for entry in normalize_media_entries(item, item.get("kind", "photo"))
+        ]
         payload = {
             "chat_id": chat_id,
             "star_count": int(item["price"]),
-            "media": [
-                {
-                    "type": "photo" if item["kind"] == "photo" else "video",
-                    "media": item["file_id"],
-                }
-            ],
+            "media": media_payload,
             "payload": "item:{0}".format(item["id"]),
             "caption": safe_caption(item.get("caption") or item.get("title")),
         }
@@ -772,6 +800,9 @@ class TelegramPaidMediaBot:
             "kind": kind,
             "price": int(price),
             "title": title.strip() or "{0} {1}".format(kind.title(), self.catalog["next_id"]),
+            "media": [],
+            "caption": "",
+            "updated_at": 0,
         }
         if publish_chat_id is not None:
             pending_upload["publish_chat_id"] = int(publish_chat_id)
@@ -1045,6 +1076,110 @@ class TelegramPaidMediaBot:
                 "или /items для списка постов."
             ).format(item_id, item["price"]),
         )
+
+    def collect_pending_media(self, chat_id, message, pending):
+        if pending["kind"] == "photo":
+            photos = message.get("photo") or []
+            if not photos:
+                self.send_message(chat_id, "Ожидаю фото. Для выхода используйте /cancel.")
+                return False
+            entry = {"type": "photo", "file_id": photos[-1]["file_id"]}
+        else:
+            video = message.get("video")
+            if not video:
+                self.send_message(chat_id, "Ожидаю видео. Для выхода используйте /cancel.")
+                return False
+            entry = {"type": "video", "file_id": video["file_id"]}
+
+        media_entries = pending.setdefault("media", [])
+        if any(existing.get("file_id") == entry["file_id"] for existing in media_entries):
+            return True
+
+        if len(media_entries) >= 10:
+            self.send_message(chat_id, "В одном платном посте можно отправить не более 10 файлов.")
+            return False
+
+        media_entries.append(entry)
+        if message.get("caption") and not pending.get("caption"):
+            pending["caption"] = safe_caption(message.get("caption", ""))
+
+        media_group_id = message.get("media_group_id")
+        if media_group_id:
+            pending["media_group_id"] = str(media_group_id)
+
+        pending["updated_at"] = time.time()
+        self.state["pending_uploads"][str(chat_id)] = pending
+        self.save_state()
+        return True
+
+    def finalize_pending_upload(self, chat_id, pending):
+        media_entries = normalize_media_entries(pending, pending.get("kind", "photo"))
+        if not media_entries:
+            return False
+
+        item_id = int(self.catalog["next_id"])
+        item = {
+            "id": item_id,
+            "kind": media_entries[0]["type"],
+            "file_id": media_entries[0]["file_id"],
+            "media": media_entries,
+            "price": int(pending["price"]),
+            "title": pending["title"],
+            "caption": safe_caption(pending.get("caption", "")),
+        }
+
+        self.catalog["items"].append(item)
+        self.catalog["next_id"] = item_id + 1
+        self.save_catalog()
+        self.clear_pending_upload(chat_id)
+        self.update_status(catalog_items=len(self.catalog["items"]))
+
+        media_count = len(media_entries)
+        publish_chat_id = pending.get("publish_chat_id")
+        if publish_chat_id is not None:
+            self.send_paid_item(int(publish_chat_id), item)
+            self.send_message(
+                chat_id,
+                (
+                    "Платный пост #{0} сохранен и опубликован.\n"
+                    "Файлов: {1}\n"
+                    "Цена: {2} Stars\n"
+                    "Чтобы отправить его в другой чат позже, используйте /publish {0}."
+                ).format(item_id, media_count, item["price"]),
+            )
+            return True
+
+        self.send_message(
+            chat_id,
+            (
+                "Платный пост #{0} сохранен.\n"
+                "Файлов: {1}\n"
+                "Цена: {2} Stars\n"
+                "Используйте /publish {0}, чтобы отправить его в текущий чат, или /items для списка постов."
+            ).format(item_id, media_count, item["price"]),
+        )
+        return True
+
+    def finalize_ready_pending_uploads(self, force=False):
+        now = time.time()
+        for chat_key, pending in list(self.state["pending_uploads"].items()):
+            media_entries = normalize_media_entries(pending, pending.get("kind", "photo"))
+            if not media_entries:
+                continue
+
+            if force:
+                self.finalize_pending_upload(int(chat_key), pending)
+                continue
+
+            if pending.get("media_group_id") and now - float(pending.get("updated_at", 0)) >= 1.5:
+                self.finalize_pending_upload(int(chat_key), pending)
+
+    def store_media_item(self, chat_id, message, pending):
+        if not self.collect_pending_media(chat_id, message, pending):
+            return
+
+        if not message.get("media_group_id"):
+            self.finalize_pending_upload(chat_id, pending)
 
     def handle_buy_command(self, chat_id, raw_value):
         if not raw_value:
@@ -1490,6 +1625,8 @@ class TelegramPaidMediaBot:
 
                     self.handle_update(update)
                     self.update_status(last_update_id=int(update["update_id"]))
+
+                self.finalize_ready_pending_uploads(force=bool(updates))
             except KeyboardInterrupt:
                 raise
             except Exception as exc:
