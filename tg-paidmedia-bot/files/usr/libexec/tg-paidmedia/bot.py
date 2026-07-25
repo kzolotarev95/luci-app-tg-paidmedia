@@ -411,13 +411,24 @@ class TelegramPaidMediaBot:
     def is_admin(self, user_id):
         return bool(self.admin_ids) and int(user_id) in self.admin_ids
 
-    def send_message(self, chat_id, text, reply_markup=None):
+    def send_message(
+        self,
+        chat_id,
+        text,
+        reply_markup=None,
+        parse_mode=None,
+        disable_web_page_preview=None,
+    ):
         payload = {
             "chat_id": chat_id,
             "text": text,
         }
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+        if disable_web_page_preview is not None:
+            payload["disable_web_page_preview"] = bool(disable_web_page_preview)
         return self.api_call("sendMessage", payload)
 
     def build_main_keyboard(self, user_id=None):
@@ -431,9 +442,11 @@ class TelegramPaidMediaBot:
                     [{"text": "Создать фото-пост"}, {"text": "Создать видео-пост"}],
                     [{"text": "Мои посты"}, {"text": "Баланс Stars"}],
                     [{"text": "Операции Stars"}, {"text": "Помощь админа"}],
-                    [{"text": "Отмена"}],
+                    [{"text": "Назад"}, {"text": "Отмена"}],
                 ]
             )
+        else:
+            rows.append([{"text": "Назад"}])
 
         return {
             "keyboard": rows,
@@ -635,8 +648,32 @@ class TelegramPaidMediaBot:
         )
         return "\n".join(lines)
 
+    def build_admin_items_keyboard(self):
+        if not self.catalog["items"]:
+            return None
+
+        rows = []
+        for item in self.catalog["items"]:
+            rows.append(
+                [
+                    {
+                        "text": "Опубликовать #{0}".format(item["id"]),
+                        "callback_data": "publish:{0}".format(item["id"]),
+                    },
+                    {
+                        "text": "Удалить #{0}".format(item["id"]),
+                        "callback_data": "delete:{0}".format(item["id"]),
+                    },
+                ]
+            )
+        return {"inline_keyboard": rows}
+
     def send_admin_items(self, chat_id):
-        return self.send_message(chat_id, self.build_admin_items_text())
+        return self.send_message(
+            chat_id,
+            self.build_admin_items_text(),
+            reply_markup=self.build_admin_items_keyboard(),
+        )
 
     def send_paid_item(self, chat_id, item):
         payload = {
@@ -777,13 +814,12 @@ class TelegramPaidMediaBot:
             return True
 
         if text == "Как купить":
-            self.send_with_main_keyboard(
+            self.send_message(
                 chat_id,
-                user_id,
-                (
-                    "Откройте каталог, выберите пост и нажмите кнопку покупки. "
-                    "Telegram сам покажет официальное окно оплаты в Stars."
-                ),
+                "Купить звезды дешево можно тут 👉 ⭐️[купить звезды ⭐️](https://t.me/starslly_bot?start=6745392042)",
+                reply_markup=self.build_main_keyboard(user_id=user_id),
+                parse_mode="Markdown",
+                disable_web_page_preview=True,
             )
             return True
 
@@ -822,6 +858,16 @@ class TelegramPaidMediaBot:
 
         if text == "Помощь админа":
             self.show_admin_help(chat_id)
+            return True
+
+        if text == "Назад":
+            self.clear_pending_action(chat_id)
+            self.clear_pending_upload(chat_id)
+            self.send_with_main_keyboard(
+                chat_id,
+                user_id,
+                "Главное меню открыто. Выберите нужное действие кнопками ниже.",
+            )
             return True
 
         if text == "Отмена":
@@ -1124,24 +1170,49 @@ class TelegramPaidMediaBot:
         callback_id = query.get("id")
         from_user = query.get("from", {})
         chat_id = from_user.get("id")
+        message_chat_id = query.get("message", {}).get("chat", {}).get("id") or chat_id
 
-        if not data.startswith("buy:"):
-            self.answer_callback(callback_id, "Unsupported action.", show_alert=True)
+        if ":" not in data:
+            self.answer_callback(callback_id, "Неподдерживаемое действие.", show_alert=True)
             return
 
+        action, raw_item_id = data.split(":", 1)
         try:
-            item_id = int(data.split(":", 1)[1])
+            item_id = int(raw_item_id)
         except ValueError:
-            self.answer_callback(callback_id, "Invalid item id.", show_alert=True)
+            self.answer_callback(callback_id, "Некорректный ID поста.", show_alert=True)
             return
 
         item = self.get_item(item_id)
         if not item:
-            self.answer_callback(callback_id, "Item not found.", show_alert=True)
+            self.answer_callback(callback_id, "Пост не найден.", show_alert=True)
             return
 
-        self.answer_callback(callback_id, "Opening the Telegram Stars purchase window.")
-        self.send_paid_item(chat_id, item)
+        if action == "buy":
+            self.answer_callback(callback_id, "Открываю покупку в Stars.")
+            self.send_paid_item(chat_id, item)
+            return
+
+        if not self.is_admin(from_user.get("id")):
+            self.answer_callback(callback_id, "Это действие только для администратора.", show_alert=True)
+            return
+
+        if action == "publish":
+            self.answer_callback(callback_id, "Публикую пост в текущий чат.")
+            self.send_paid_item(message_chat_id, item)
+            return
+
+        if action == "delete":
+            self.catalog["items"] = [
+                entry for entry in self.catalog["items"] if int(entry["id"]) != item_id
+            ]
+            self.save_catalog()
+            self.update_status(catalog_items=len(self.catalog["items"]))
+            self.answer_callback(callback_id, "Пост удален.")
+            self.send_admin_items(message_chat_id)
+            return
+
+        self.answer_callback(callback_id, "Неподдерживаемое действие.", show_alert=True)
 
     def handle_purchase_update(self, payload):
         user = payload.get("from", {})
