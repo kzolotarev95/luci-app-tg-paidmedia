@@ -8,6 +8,9 @@
         ],
         "luci": [
           "getInitList"
+        ],
+        "service": [
+          "list"
         ]
       },
       "uci": [
@@ -17,10 +20,7 @@
         "/bin/cat /var/run/tg-paidmedia/status.json": [
           "exec"
         ],
-        "/etc/init.d/tg-paidmedia status": [
-          "exec"
-        ],
-        "/sbin/logread -e tg-paidmedia": [
+        "/sbin/logread -l 200": [
           "exec"
         ]
       }

@@ -324,11 +324,14 @@ class TelegramPaidMediaBot:
         return result.get("transactions", [])
 
     def setup(self):
+        LOG.info("Setup step: getMe")
         self.me = self.api_call("getMe")
+        LOG.info("Setup step: setMyCommands")
         self.set_my_commands()
 
         if self.drop_pending:
             try:
+                LOG.info("Setup step: drop pending updates")
                 self.api_call(
                     "getUpdates",
                     {
@@ -342,7 +345,9 @@ class TelegramPaidMediaBot:
             except Exception as exc:
                 LOG.warning("Unable to drop pending updates: %s", exc)
 
+        LOG.info("Setup step: refresh balance")
         self.refresh_balance()
+        LOG.info("Setup step: write runtime status")
         self.update_status(
             bot_username=self.me.get("username", ""),
             bot_id=self.me.get("id", 0),

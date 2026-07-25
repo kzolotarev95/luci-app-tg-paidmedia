@@ -21,6 +21,13 @@ var callInitAction = rpc.declare({
 	expect: { result: false }
 });
 
+var callServiceList = rpc.declare({
+	object: 'service',
+	method: 'list',
+	params: [ 'name' ],
+	expect: { '': {} }
+});
+
 function parseJSON(text, fallback) {
 	try {
 		return JSON.parse(text || '');
@@ -235,6 +242,30 @@ return view.extend({
 				line-height: 1.55;
 			}
 
+			.tg-paidmedia-error {
+				margin-bottom: 1rem;
+				padding: 1rem;
+				border: 1px solid rgba(180, 35, 24, 0.16);
+				border-radius: 16px;
+				background: linear-gradient(180deg, #fff8f8 0%, #fff1f1 100%);
+			}
+
+			.tg-paidmedia-error strong {
+				display: block;
+				margin-bottom: .45rem;
+				color: var(--tg-danger);
+			}
+
+			.tg-paidmedia-error pre {
+				margin: 0;
+				color: #6b1b16;
+				font-family: "Cascadia Mono", "Consolas", "SFMono-Regular", monospace;
+				font-size: .82rem;
+				line-height: 1.55;
+				white-space: pre-wrap;
+				word-break: break-word;
+			}
+
 			@media (max-width: 700px) {
 				.tg-paidmedia-hero,
 				.tg-paidmedia-section {
@@ -257,13 +288,13 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			callInitList('tg-paidmedia'),
-			fs.exec('/etc/init.d/tg-paidmedia', [ 'status' ]).catch(function() {
-				return { code: 1, stdout: '{}', stderr: '' };
+			callServiceList('tg-paidmedia').catch(function() {
+				return {};
 			}),
 			fs.exec('/bin/cat', [ '/var/run/tg-paidmedia/status.json' ]).catch(function() {
 				return { code: 1, stdout: '{}', stderr: '' };
 			}),
-			fs.exec('/sbin/logread', [ '-e', 'tg-paidmedia' ]).catch(function() {
+			fs.exec('/sbin/logread', [ '-l', '200' ]).catch(function() {
 				return { code: 1, stdout: '', stderr: '' };
 			})
 		]);
@@ -324,7 +355,7 @@ return view.extend({
 	},
 
 	extractServiceRunning: function(serviceStatus) {
-		var root = serviceStatus['tg-paidmedia'] || {};
+		var root = serviceStatus['tg-paidmedia'] || serviceStatus || {};
 		var instances = root.instances || {};
 		var instanceName = Object.keys(instances)[0];
 		var instance = instanceName ? instances[instanceName] : {};
@@ -338,12 +369,13 @@ return view.extend({
 
 	buildStatusSection: function(data, statusTarget, logTarget) {
 		var initList = data[0] || {};
-		var serviceStatus = parseJSON((data[1] || {}).stdout, {});
+		var serviceStatus = data[1] || {};
 		var botStatus = parseJSON((data[2] || {}).stdout, {});
 		var serviceMeta = this.extractServiceRunning(serviceStatus);
 		var initMeta = initList['tg-paidmedia'] || {};
 		var balance = botStatus.last_balance || {};
 		var lastPurchase = botStatus.last_purchase || {};
+		var lastException = String(botStatus.last_exception || '').trim();
 		var runningBadge = E('span', {
 			'class': 'tg-paidmedia-badge ' + (serviceMeta.running ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped')
 		}, [ serviceMeta.running ? '\u0417\u0430\u043f\u0443\u0449\u0435\u043d' : '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d' ]);
@@ -383,10 +415,15 @@ return view.extend({
 				})
 			}, [ '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c' ])
 		]);
+		var errorBlock = lastException ? E('div', { 'class': 'tg-paidmedia-error' }, [
+			E('strong', {}, [ '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0444\u0430\u0442\u0430\u043b\u044c\u043d\u0430\u044f \u043e\u0448\u0438\u0431\u043a\u0430 \u0441\u0442\u0430\u0440\u0442\u0430' ]),
+			E('pre', {}, [ trimLog(lastException, 24) ])
+		]) : null;
 
 		return E('div', { 'class': 'tg-paidmedia-section' }, [
 			E('h3', {}, [ '\u0421\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u0430' ]),
 			E('p', { 'class': 'tg-paidmedia-note' }, [ '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0431\u0437\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u044b \u0431\u043e\u0442\u0430, \u0431\u0430\u043b\u0430\u043d\u0441\u0430 Stars \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u0432 \u043b\u043e\u0433\u0438.' ]),
+			errorBlock || '',
 			E('div', { 'class': 'tg-paidmedia-grid' }, cards.map(function(card) {
 				return E('div', { 'class': 'tg-paidmedia-card' }, [
 					E('p', { 'class': 'tg-paidmedia-card-label' }, [ card.label ]),
@@ -427,9 +464,10 @@ return view.extend({
 		}.bind(this)).then(function() {
 			return this.load();
 		}.bind(this)).then(function(data) {
-			var serviceStatus = parseJSON((data[1] || {}).stdout, {});
+			var serviceStatus = data[1] || {};
 			var botStatus = parseJSON((data[2] || {}).stdout, {});
 			var serviceMeta = this.extractServiceRunning(serviceStatus);
+			var failureReason = String(botStatus.last_exception || botStatus.last_error || '').trim();
 
 			this.updatePanels(statusTarget, logTarget, data);
 
@@ -439,7 +477,7 @@ return view.extend({
 
 			if (action !== 'stop' && !serviceMeta.running) {
 				throw new Error(
-					(botStatus.last_error && String(botStatus.last_error).trim()) ||
+					failureReason ||
 					('\u0421\u0435\u0440\u0432\u0438\u0441 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u043b\u0441\u044f \u043f\u043e\u0441\u043b\u0435 ' + actionLabel + '. \u041f\u043e\u0441\u043c\u043e\u0442\u0440\u0438\u0442\u0435 \u0436\u0443\u0440\u043d\u0430\u043b \u043d\u0438\u0436\u0435.')
 				);
 			}
@@ -454,7 +492,7 @@ return view.extend({
 		var logTarget = E('pre', { 'class': 'tg-paidmedia-log' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043b\u043e\u0433\u043e\u0432...' ]);
 		var logSection = E('div', { 'class': 'tg-paidmedia-section' }, [
 			E('h3', {}, [ '\u0416\u0443\u0440\u043d\u0430\u043b \u0441\u043e\u0431\u044b\u0442\u0438\u0439' ]),
-			E('p', { 'class': 'tg-paidmedia-note' }, [ '\u041f\u043e\u043a\u0430\u0437\u0430\u043d\u044b \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0435 200 \u0441\u0442\u0440\u043e\u043a \u0438\u0437 logread \u043f\u043e \u0441\u0435\u0440\u0432\u0438\u0441\u0443 tg-paidmedia.' ]),
+			E('p', { 'class': 'tg-paidmedia-note' }, [ '\u041f\u043e\u043a\u0430\u0437\u0430\u043d \u043e\u0431\u0449\u0438\u0439 \u0445\u0432\u043e\u0441\u0442 \u0438\u0437 200 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u0442\u0440\u043e\u043a logread, \u0447\u0442\u043e\u0431\u044b \u0431\u044b\u043b\u0438 \u0432\u0438\u0434\u043d\u044b \u0438 traceback Python, \u0438 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f procd.' ]),
 			logTarget
 		]);
 
