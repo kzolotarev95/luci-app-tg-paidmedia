@@ -13,7 +13,7 @@ define Package/tg-paidmedia-bot
   CATEGORY:=Network
   SUBMENU:=Telephony
   TITLE:=Telegram Paid Media bot with Telegram Stars support
-  DEPENDS:=+python3 +python3-openssl +ca-bundle
+  DEPENDS:=+python3 +python3-light +python3-logging +python3-email +python3-urllib +python3-openssl +python3-codecs +ca-bundle
 endef
 
 define Package/tg-paidmedia-bot/description

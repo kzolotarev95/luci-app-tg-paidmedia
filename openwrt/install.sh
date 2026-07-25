@@ -167,13 +167,29 @@ python_runtime_ok() {
 }
 
 ensure_python() {
-	local missing_modules
+	local missing_modules pkg
+	local required_pkgs
 
 	if python_runtime_ok; then
 		return 0
 	fi
 
 	ensure_pkg python3
+
+	required_pkgs="
+python3-light
+python3-logging
+python3-email
+python3-urllib
+python3-openssl
+python3-codecs
+"
+
+	for pkg in $required_pkgs; do
+		if ! try_install_pkg "$pkg"; then
+			log "Optional package $pkg is unavailable; continuing with current Python runtime"
+		fi
+	done
 
 	missing_modules="$(python_missing_modules)"
 	if printf '%s\n' "$missing_modules" | grep -qw "ssl"; then
