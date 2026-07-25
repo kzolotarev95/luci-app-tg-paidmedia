@@ -133,6 +133,25 @@ try_install_pkg() {
 	return 1
 }
 
+reinstall_pkg() {
+	local pkg="$1"
+
+	log "Reinstalling package: $pkg"
+	if [ "$PKG_MANAGER" = "apk" ]; then
+		if apk fix "$pkg"; then
+			track_package "$pkg"
+			return 0
+		fi
+	else
+		if opkg install --force-reinstall "$pkg"; then
+			track_package "$pkg"
+			return 0
+		fi
+	fi
+
+	return 1
+}
+
 python_import_ok() {
 	local module="$1"
 
@@ -168,7 +187,7 @@ python_runtime_ok() {
 
 ensure_python() {
 	local missing_modules pkg
-	local required_pkgs
+	local required_pkgs reinstall_pkgs
 
 	if python_runtime_ok; then
 		return 0
@@ -197,6 +216,31 @@ python3-codecs
 			log "Optional package python3-openssl is unavailable; continuing with current Python runtime"
 		fi
 	fi
+
+	if python_runtime_ok; then
+		return 0
+	fi
+
+	log "Python runtime still looks broken after dependency install; forcing reinstall of core Python packages"
+
+	reinstall_pkgs="
+libpython3.11
+libpython3-3.11
+python3-base
+python3
+python3-light
+python3-logging
+python3-email
+python3-urllib
+python3-openssl
+python3-codecs
+"
+
+	for pkg in $reinstall_pkgs; do
+		if ! reinstall_pkg "$pkg"; then
+			log "Reinstall attempt for $pkg was skipped or failed; continuing"
+		fi
+	done
 
 	if python_runtime_ok; then
 		return 0
