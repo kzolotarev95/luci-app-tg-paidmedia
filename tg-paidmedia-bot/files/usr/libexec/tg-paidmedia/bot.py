@@ -203,12 +203,12 @@ class TelegramPaidMediaBot:
         )
         self.poll_timeout = env_int("TG_POLL_TIMEOUT", 25)
         self.drop_pending = env_bool("TG_DROP_PENDING", True)
-        self.bot_title = os.environ.get("TG_BOT_TITLE", "Paid Media Shop").strip()
+        self.bot_title = os.environ.get("TG_BOT_TITLE", "Магазин платного контента").strip()
         self.welcome_text = os.environ.get(
             "TG_WELCOME_TEXT",
             (
-                "Choose an item below and Telegram will show the official "
-                "Stars purchase confirmation window."
+                "Выберите платный пост ниже, и Telegram покажет официальное "
+                "окно покупки за Stars."
             ),
         ).strip()
 
@@ -429,12 +429,15 @@ class TelegramPaidMediaBot:
 
     def set_my_commands(self):
         commands = [
-            {"command": "start", "description": "Open the paid media catalog"},
-            {"command": "catalog", "description": "Show available items"},
-            {"command": "buy", "description": "Buy an item by numeric id"},
-            {"command": "admin", "description": "Show admin command list"},
-            {"command": "balance", "description": "Show Telegram Stars balance"},
-            {"command": "transactions", "description": "Show recent Star history"},
+            {"command": "start", "description": "Открыть каталог платных постов"},
+            {"command": "catalog", "description": "Показать доступные посты"},
+            {"command": "buy", "description": "Купить пост по его ID"},
+            {"command": "admin", "description": "Команды администратора"},
+            {"command": "items", "description": "Список сохраненных платных постов"},
+            {"command": "postphoto", "description": "Создать платный пост из фото"},
+            {"command": "postvideo", "description": "Создать платный пост из видео"},
+            {"command": "balance", "description": "Показать баланс Telegram Stars"},
+            {"command": "transactions", "description": "Последние операции по Stars"},
         ]
         self.api_call("setMyCommands", {"commands": commands})
 
@@ -515,30 +518,35 @@ class TelegramPaidMediaBot:
         lines = [self.bot_title, "", self.welcome_text, ""]
 
         if not self.catalog["items"]:
-            lines.append("No items are published yet.")
+            lines.append("Пока нет опубликованных платных постов.")
         else:
-            lines.append("Catalog:")
+            lines.append("Доступные платные посты:")
             for item in self.catalog["items"]:
-                media_type = "Photo" if item["kind"] == "photo" else "Video"
+                media_type = "Фото" if item["kind"] == "photo" else "Видео"
                 lines.append(
                     "#{0} | {1} | {2} Stars | {3}".format(
                         item["id"], media_type, item["price"], item["title"]
                     )
                 )
 
-        lines.extend(
-            [
-                "",
-                "Use /buy <id> or the buttons below.",
-            ]
-        )
+        if self.catalog["items"]:
+            lines.extend(
+                [
+                    "",
+                    "Нажмите кнопку ниже или используйте /buy <id>.",
+                ]
+            )
 
         if include_admin_hint:
             lines.extend(
                 [
                     "",
-                    "Admin mode is enabled for your account.",
-                    "Use /admin to see upload and pricing commands.",
+                    "Для вашего аккаунта включен режим администратора.",
+                    "Быстрая публикация как на скриншоте:",
+                    "/postphoto <stars> <название> -> затем отправьте фото",
+                    "/postvideo <stars> <название> -> затем отправьте видео",
+                    "Бот сразу опубликует платный пост в текущий чат.",
+                    "Для остальных команд используйте /admin.",
                 ]
             )
 
@@ -550,8 +558,8 @@ class TelegramPaidMediaBot:
             rows.append(
                 [
                     {
-                        "text": "Buy #{0} - {1} Stars".format(
-                            item["id"], item["price"]
+                        "text": "Открыть за ⭐ {0}".format(
+                            item["price"]
                         ),
                         "callback_data": "buy:{0}".format(item["id"]),
                     }
@@ -559,13 +567,38 @@ class TelegramPaidMediaBot:
             )
         return {"inline_keyboard": rows} if rows else None
 
-    def send_catalog(self, chat_id, user_id=None):
-        include_admin = user_id is not None and self.is_admin(user_id)
-        return self.send_message(
-            chat_id,
-            self.build_catalog_text(include_admin_hint=include_admin),
-            reply_markup=self.build_catalog_keyboard(),
+    def build_admin_items_text(self):
+        if not self.catalog["items"]:
+            return "\n".join(
+                [
+                    "Платных постов пока нет.",
+                    "",
+                    "Как сделать пост как в Telegram Paid Media:",
+                    "1. Отправьте /postphoto <stars> <название> или /postvideo <stars> <название>",
+                    "2. Затем сразу отправьте фото или видео",
+                    "3. Бот сохранит материал и опубликует его в этот чат",
+                ]
+            )
+
+        lines = ["Ваши платные посты:"]
+        for item in self.catalog["items"]:
+            media_type = "Фото" if item["kind"] == "photo" else "Видео"
+            lines.append(
+                "#{0} | {1} | ⭐{2} | {3}".format(
+                    item["id"], media_type, item["price"], item["title"]
+                )
+            )
+        lines.extend(
+            [
+                "",
+                "Чтобы опубликовать в текущий чат: /publish <id>",
+                "Чтобы изменить цену: /setprice <id> <stars>",
+            ]
         )
+        return "\n".join(lines)
+
+    def send_admin_items(self, chat_id):
+        return self.send_message(chat_id, self.build_admin_items_text())
 
     def send_paid_item(self, chat_id, item):
         payload = {
@@ -585,18 +618,21 @@ class TelegramPaidMediaBot:
     def show_admin_help(self, chat_id):
         text = "\n".join(
             [
-                "Admin commands:",
-                "/addphoto <stars> <title> - wait for the next photo",
-                "/addvideo <stars> <title> - wait for the next video",
-                "/setprice <id> <stars> - change price",
-                "/settitle <id> <title> - change title",
-                "/setcaption <id> <caption> - change paid caption",
-                "/delete <id> - remove item",
-                "/publish <id> - send the paid item to current chat",
-                "/balance - current Telegram Stars balance",
-                "/transactions [count] - last incoming and outgoing Star events",
-                "/withdraw - explain current payout limitation",
-                "/cancel - cancel pending upload mode",
+                "Команды администратора:",
+                "/postphoto <stars> <название> - сразу опубликовать следующее фото как платный пост",
+                "/postvideo <stars> <название> - сразу опубликовать следующее видео как платный пост",
+                "/addphoto <stars> <название> - сохранить следующее фото в каталог без публикации",
+                "/addvideo <stars> <название> - сохранить следующее видео в каталог без публикации",
+                "/items - список сохраненных постов",
+                "/publish <id> - отправить сохраненный пост в текущий чат",
+                "/setprice <id> <stars> - изменить цену",
+                "/settitle <id> <название> - изменить название",
+                "/setcaption <id> <текст> - изменить подпись платного поста",
+                "/delete <id> - удалить пост",
+                "/balance - баланс Telegram Stars",
+                "/transactions [count] - последние операции Stars",
+                "/withdraw - информация о выводе",
+                "/cancel - отменить режим ожидания медиа",
             ]
         )
         return self.send_message(chat_id, text)
@@ -609,12 +645,15 @@ class TelegramPaidMediaBot:
         command = head.split("@", 1)[0].lower()
         return command, tail.strip()
 
-    def set_pending_upload(self, chat_id, kind, price, title):
-        self.state["pending_uploads"][str(chat_id)] = {
+    def set_pending_upload(self, chat_id, kind, price, title, publish_chat_id=None):
+        pending_upload = {
             "kind": kind,
             "price": int(price),
             "title": title.strip() or "{0} {1}".format(kind.title(), self.catalog["next_id"]),
         }
+        if publish_chat_id is not None:
+            pending_upload["publish_chat_id"] = int(publish_chat_id)
+        self.state["pending_uploads"][str(chat_id)] = pending_upload
         self.save_state()
 
     def clear_pending_upload(self, chat_id):
@@ -625,13 +664,13 @@ class TelegramPaidMediaBot:
         if pending["kind"] == "photo":
             photos = message.get("photo") or []
             if not photos:
-                self.send_message(chat_id, "Waiting for a photo. Send /cancel to leave upload mode.")
+                self.send_message(chat_id, "Ожидаю фото. Для выхода используйте /cancel.")
                 return
             file_id = photos[-1]["file_id"]
         else:
             video = message.get("video")
             if not video:
-                self.send_message(chat_id, "Waiting for a video. Send /cancel to leave upload mode.")
+                self.send_message(chat_id, "Ожидаю видео. Для выхода используйте /cancel.")
                 return
             file_id = video["file_id"]
 
@@ -651,29 +690,43 @@ class TelegramPaidMediaBot:
         self.clear_pending_upload(chat_id)
         self.update_status(catalog_items=len(self.catalog["items"]))
 
+        publish_chat_id = pending.get("publish_chat_id")
+        if publish_chat_id is not None:
+            self.send_paid_item(int(publish_chat_id), item)
+            self.send_message(
+                chat_id,
+                (
+                    "Платный пост #{0} сохранен и опубликован.\n"
+                    "Цена: {1} Stars\n"
+                    "Чтобы отправить его в другой чат позже, используйте /publish {0}."
+                ).format(item_id, item["price"]),
+            )
+            return
+
         self.send_message(
             chat_id,
             (
-                "Saved item #{0}: {1}\n"
-                "Price: {2} Stars\n"
-                "Use /publish {0} to send it here or /catalog to review the shop."
-            ).format(item_id, item["title"], item["price"]),
+                "Платный пост #{0} сохранен.\n"
+                "Цена: {1} Stars\n"
+                "Используйте /publish {0}, чтобы отправить его в текущий чат, "
+                "или /items для списка постов."
+            ).format(item_id, item["price"]),
         )
 
     def handle_buy_command(self, chat_id, raw_value):
         if not raw_value:
-            self.send_message(chat_id, "Usage: /buy <id>")
+            self.send_message(chat_id, "Использование: /buy <id>")
             return
 
         try:
             item_id = int(raw_value.split()[0])
         except ValueError:
-            self.send_message(chat_id, "Item id must be a number.")
+            self.send_message(chat_id, "ID поста должен быть числом.")
             return
 
         item = self.get_item(item_id)
         if not item:
-            self.send_message(chat_id, "Item not found.")
+            self.send_message(chat_id, "Пост не найден.")
             return
 
         self.send_paid_item(chat_id, item)
@@ -683,119 +736,132 @@ class TelegramPaidMediaBot:
         user_id = message.get("from", {}).get("id")
 
         if not self.is_admin(user_id):
-            self.send_message(chat_id, "Admin access is denied for this Telegram account.")
+            self.send_message(chat_id, "Для этого Telegram-аккаунта нет прав администратора.")
             return
 
         if command == "/admin":
             self.show_admin_help(chat_id)
             return
 
-        if command == "/cancel":
-            self.clear_pending_upload(chat_id)
-            self.send_message(chat_id, "Pending upload mode cleared.")
+        if command == "/items":
+            self.send_admin_items(chat_id)
             return
 
-        if command in {"/addphoto", "/addvideo"}:
+        if command == "/cancel":
+            self.clear_pending_upload(chat_id)
+            self.send_message(chat_id, "Режим ожидания медиа отключен.")
+            return
+
+        if command in {"/addphoto", "/addvideo", "/postphoto", "/postvideo"}:
             parts = args.split(" ", 1)
             if not parts or not parts[0]:
-                self.send_message(chat_id, "Usage: {0} <stars> <title>".format(command))
+                self.send_message(chat_id, "Использование: {0} <stars> <название>".format(command))
                 return
             try:
                 price = int(parts[0])
             except ValueError:
-                self.send_message(chat_id, "Price must be an integer number of Stars.")
+                self.send_message(chat_id, "Цена должна быть целым числом Stars.")
                 return
             if price < 1:
-                self.send_message(chat_id, "Price must be at least 1 Star.")
+                self.send_message(chat_id, "Цена должна быть не меньше 1 Stars.")
                 return
 
             title = parts[1] if len(parts) > 1 else ""
-            kind = "photo" if command == "/addphoto" else "video"
-            self.set_pending_upload(chat_id, kind, price, title)
+            kind = "photo" if command in {"/addphoto", "/postphoto"} else "video"
+            publish_chat_id = chat_id if command in {"/postphoto", "/postvideo"} else None
+            self.set_pending_upload(chat_id, kind, price, title, publish_chat_id=publish_chat_id)
             self.send_message(
                 chat_id,
-                "Upload mode enabled for a {0}. Send the media file now.".format(kind),
+                (
+                    "Режим загрузки включен для {0}.\n"
+                    "{1}"
+                ).format(
+                    "фото" if kind == "photo" else "видео",
+                    "Отправьте файл, и бот сразу опубликует платный пост в этот чат."
+                    if publish_chat_id is not None
+                    else "Отправьте файл, и бот сохранит его в каталог.",
+                ),
             )
             return
 
         if command == "/setprice":
             parts = args.split()
             if len(parts) != 2:
-                self.send_message(chat_id, "Usage: /setprice <id> <stars>")
+                self.send_message(chat_id, "Использование: /setprice <id> <stars>")
                 return
             try:
                 item_id = int(parts[0])
                 price = int(parts[1])
             except ValueError:
-                self.send_message(chat_id, "Both id and price must be integers.")
+                self.send_message(chat_id, "И ID, и цена должны быть числами.")
                 return
             if price < 1:
-                self.send_message(chat_id, "Price must be at least 1 Star.")
+                self.send_message(chat_id, "Цена должна быть не меньше 1 Stars.")
                 return
             item = self.get_item(item_id)
             if not item:
-                self.send_message(chat_id, "Item not found.")
+                self.send_message(chat_id, "Пост не найден.")
                 return
             item["price"] = price
             self.save_catalog()
-            self.send_message(chat_id, "Item #{0} price updated to {1} Stars.".format(item_id, price))
+            self.send_message(chat_id, "Цена поста #{0} обновлена: {1} Stars.".format(item_id, price))
             return
 
         if command == "/settitle":
             parts = args.split(" ", 1)
             if len(parts) != 2:
-                self.send_message(chat_id, "Usage: /settitle <id> <title>")
+                self.send_message(chat_id, "Использование: /settitle <id> <название>")
                 return
             try:
                 item_id = int(parts[0])
             except ValueError:
-                self.send_message(chat_id, "Item id must be an integer.")
+                self.send_message(chat_id, "ID поста должен быть числом.")
                 return
             item = self.get_item(item_id)
             if not item:
-                self.send_message(chat_id, "Item not found.")
+                self.send_message(chat_id, "Пост не найден.")
                 return
             title = parts[1].strip()
             if not title:
-                self.send_message(chat_id, "Title cannot be empty.")
+                self.send_message(chat_id, "Название не может быть пустым.")
                 return
             item["title"] = title
             self.save_catalog()
-            self.send_message(chat_id, "Item #{0} title updated.".format(item_id))
+            self.send_message(chat_id, "Название поста #{0} обновлено.".format(item_id))
             return
 
         if command == "/setcaption":
             parts = args.split(" ", 1)
             if len(parts) != 2:
-                self.send_message(chat_id, "Usage: /setcaption <id> <caption>")
+                self.send_message(chat_id, "Использование: /setcaption <id> <текст>")
                 return
             try:
                 item_id = int(parts[0])
             except ValueError:
-                self.send_message(chat_id, "Item id must be an integer.")
+                self.send_message(chat_id, "ID поста должен быть числом.")
                 return
             item = self.get_item(item_id)
             if not item:
-                self.send_message(chat_id, "Item not found.")
+                self.send_message(chat_id, "Пост не найден.")
                 return
             item["caption"] = safe_caption(parts[1])
             self.save_catalog()
-            self.send_message(chat_id, "Item #{0} caption updated.".format(item_id))
+            self.send_message(chat_id, "Подпись поста #{0} обновлена.".format(item_id))
             return
 
         if command == "/delete":
             if not args:
-                self.send_message(chat_id, "Usage: /delete <id>")
+                self.send_message(chat_id, "Использование: /delete <id>")
                 return
             try:
                 item_id = int(args.split()[0])
             except ValueError:
-                self.send_message(chat_id, "Item id must be an integer.")
+                self.send_message(chat_id, "ID поста должен быть числом.")
                 return
 
             item = self.get_item(item_id)
             if not item:
-                self.send_message(chat_id, "Item not found.")
+                self.send_message(chat_id, "Пост не найден.")
                 return
 
             self.catalog["items"] = [
@@ -803,21 +869,21 @@ class TelegramPaidMediaBot:
             ]
             self.save_catalog()
             self.update_status(catalog_items=len(self.catalog["items"]))
-            self.send_message(chat_id, "Item #{0} removed.".format(item_id))
+            self.send_message(chat_id, "Пост #{0} удален.".format(item_id))
             return
 
         if command == "/publish":
             if not args:
-                self.send_message(chat_id, "Usage: /publish <id>")
+                self.send_message(chat_id, "Использование: /publish <id>")
                 return
             try:
                 item_id = int(args.split()[0])
             except ValueError:
-                self.send_message(chat_id, "Item id must be an integer.")
+                self.send_message(chat_id, "ID поста должен быть числом.")
                 return
             item = self.get_item(item_id)
             if not item:
-                self.send_message(chat_id, "Item not found.")
+                self.send_message(chat_id, "Пост не найден.")
                 return
             self.send_paid_item(chat_id, item)
             return
@@ -828,7 +894,7 @@ class TelegramPaidMediaBot:
             nanostars = balance.get("nanostar_amount", 0)
             self.send_message(
                 chat_id,
-                "Current bot balance: {0} Stars ({1} nanostars)".format(amount, nanostars),
+                "Текущий баланс бота: {0} Stars ({1} nanostars)".format(amount, nanostars),
             )
             return
 
@@ -838,14 +904,14 @@ class TelegramPaidMediaBot:
                 try:
                     count = int(args.split()[0])
                 except ValueError:
-                    self.send_message(chat_id, "Count must be an integer between 1 and 20.")
+                    self.send_message(chat_id, "Количество должно быть числом от 1 до 20.")
                     return
             transactions = self.recent_transactions(count)
             if not transactions:
-                self.send_message(chat_id, "No Star transactions were returned by Telegram.")
+                self.send_message(chat_id, "Telegram пока не вернул операции Stars.")
                 return
 
-            lines = ["Recent Star transactions:"]
+            lines = ["Последние операции Stars:"]
             for entry in transactions:
                 partner = entry.get("source") or entry.get("receiver") or {}
                 partner_type = partner.get("type", "unknown")
@@ -870,9 +936,9 @@ class TelegramPaidMediaBot:
             self.send_message(
                 chat_id,
                 (
-                    "Automatic Stars withdrawal is not implemented in this feed.\n"
-                    "The bot can track balance and transaction history, but payout workflows "
-                    "are handled outside a plain Bot API token flow."
+                    "Автоматический вывод Stars здесь не реализован.\n"
+                    "Бот умеет показывать баланс и историю операций, "
+                    "а вывод настраивается отдельно от обычного Bot API токена."
                 ),
             )
             return
@@ -964,6 +1030,9 @@ class TelegramPaidMediaBot:
             "/cancel",
             "/addphoto",
             "/addvideo",
+            "/postphoto",
+            "/postvideo",
+            "/items",
             "/setprice",
             "/settitle",
             "/setcaption",
@@ -982,7 +1051,7 @@ class TelegramPaidMediaBot:
 
         self.send_message(
             chat_id,
-            "Unknown command. Use /catalog to browse items or /admin if you are the shop owner.",
+            "Неизвестная команда. Используйте /catalog для каталога или /admin для команд администратора.",
         )
 
     def handle_update(self, update):
