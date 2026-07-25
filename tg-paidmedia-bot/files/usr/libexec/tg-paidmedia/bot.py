@@ -94,6 +94,24 @@ def write_fatal_status(path, message, exception_text):
     atomic_write_json(path, status)
 
 
+def describe_connection_error(exc):
+    message = str(exc).strip()
+
+    if "Network unreachable" in message:
+        return (
+            "Router has no Internet access yet. Waiting for WAN before connecting "
+            "to the Telegram API."
+        )
+
+    if "Name or service not known" in message or "Temporary failure in name resolution" in message:
+        return (
+            "DNS is not ready yet on the router. Waiting before retrying the "
+            "Telegram API connection."
+        )
+
+    return message
+
+
 def safe_caption(value):
     value = (value or "").strip()
     return value[:1024]
@@ -354,6 +372,23 @@ class TelegramPaidMediaBot:
             last_error="",
             last_exception="",
         )
+
+    def setup_with_retry(self):
+        while True:
+            try:
+                self.setup()
+                return
+            except KeyboardInterrupt:
+                raise
+            except Exception as exc:
+                friendly_error = describe_connection_error(exc)
+                LOG.warning("Startup is waiting for connectivity: %s", friendly_error)
+                self.update_status(
+                    last_error=friendly_error,
+                    last_exception=traceback.format_exc(limit=8),
+                    last_poll_at=utc_now(),
+                )
+                time.sleep(10)
 
     def get_updates(self, offset_value):
         payload = {
@@ -850,7 +885,7 @@ class TelegramPaidMediaBot:
             self.handle_purchase_update(update["purchased_paid_media"])
 
     def run(self):
-        self.setup()
+        self.setup_with_retry()
         offset_value = int(self.state.get("offset", 0))
 
         while True:
