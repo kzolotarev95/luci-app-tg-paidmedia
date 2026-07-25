@@ -8,6 +8,7 @@ import os
 import pathlib
 import socket
 import ssl
+import subprocess
 import tempfile
 import time
 import traceback
@@ -188,6 +189,7 @@ class TelegramPaidMediaBot:
 
         self.api_base = "https://api.telegram.org/bot{0}/".format(self.token)
         self.url_opener = urllib.request.build_opener(IPv4HTTPSHandler())
+        self.wget_path = os.environ.get("TG_WGET_PATH", "/usr/bin/wget")
         self.admin_ids = parse_admin_ids(os.environ.get("TG_ADMIN_IDS", ""))
         self.data_dir = os.environ.get("TG_DATA_DIR", "/var/lib/tg-paidmedia")
         self.catalog_path = os.environ.get(
@@ -324,9 +326,19 @@ class TelegramPaidMediaBot:
                 "Telegram API HTTP error for {0}: {1}".format(method, details)
             ) from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(
-                "Telegram API connection error for {0}: {1}".format(method, exc)
-            ) from exc
+            LOG.warning(
+                "urllib transport failed for %s, retrying via wget: %s",
+                method,
+                exc,
+            )
+            data = self.api_call_via_wget(method, payload or {}, timeout)
+        except TimeoutError as exc:
+            LOG.warning(
+                "urllib transport timed out for %s, retrying via wget: %s",
+                method,
+                exc,
+            )
+            data = self.api_call_via_wget(method, payload or {}, timeout)
 
         if not data.get("ok"):
             raise RuntimeError(
@@ -336,6 +348,57 @@ class TelegramPaidMediaBot:
             )
 
         return data.get("result")
+
+    def api_call_via_wget(self, method, payload=None, timeout=None):
+        request_timeout = int(timeout or (self.poll_timeout + 15))
+        command = [
+            self.wget_path,
+            "-qO-",
+            "--timeout",
+            str(request_timeout),
+            "--tries",
+            "1",
+            "--header",
+            "Content-Type: application/json",
+            "--post-data",
+            json.dumps(payload or {}, separators=(",", ":")),
+            self.api_base + method,
+        ]
+
+        try:
+            completed = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=request_timeout + 5,
+            )
+        except FileNotFoundError as exc:
+            raise RuntimeError(
+                "Telegram API connection error for {0}: wget is not available".format(
+                    method
+                )
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                "Telegram API connection error for {0}: wget timed out".format(method)
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            stderr_text = (exc.stderr or "").strip()
+            stdout_text = (exc.stdout or "").strip()
+            details = stderr_text or stdout_text or "wget request failed"
+            raise RuntimeError(
+                "Telegram API connection error for {0}: {1}".format(method, details)
+            ) from exc
+
+        try:
+            return json.loads(completed.stdout or "{}")
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                "Telegram API invalid response for {0}: {1}".format(
+                    method, (completed.stdout or "").strip()[:200]
+                )
+            ) from exc
 
     def get_item(self, item_id):
         for item in self.catalog["items"]:
