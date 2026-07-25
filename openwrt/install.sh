@@ -110,33 +110,26 @@ ensure_pkg() {
 	track_package "$pkg"
 }
 
+python_runtime_ok() {
+	if ! command_exists python3; then
+		return 1
+	fi
+
+	python3 -c "import datetime, json, logging, pathlib, ssl, tempfile, traceback, urllib.error, urllib.request" >/dev/null 2>&1
+}
+
 ensure_python() {
-	if command_exists python3; then
+	if python_runtime_ok; then
 		return 0
 	fi
 
-	if pkg_installed python3-light; then
+	ensure_pkg python3
+
+	if python_runtime_ok; then
 		return 0
 	fi
 
-	log "Installing package: python3-light"
-	if [ "$PKG_MANAGER" = "apk" ]; then
-		if apk add python3-light; then
-			track_package "python3-light"
-			return 0
-		fi
-	elif opkg install python3-light; then
-		track_package "python3-light"
-		return 0
-	fi
-
-	log "Falling back to python3"
-	if [ "$PKG_MANAGER" = "apk" ]; then
-		apk add python3
-	else
-		opkg install python3
-	fi
-	track_package "python3"
+	fail "python3 runtime is installed, but required standard modules are still unavailable"
 }
 
 fetch_archive() {
