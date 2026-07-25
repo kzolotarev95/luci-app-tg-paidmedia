@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import datetime
+import http.client
 import json
 import logging
 import os
 import pathlib
+import socket
+import ssl
 import tempfile
 import time
 import traceback
@@ -13,6 +16,52 @@ import urllib.request
 
 
 LOG = logging.getLogger("tg-paidmedia")
+
+
+class IPv4HTTPSConnection(http.client.HTTPSConnection):
+    def connect(self):
+        host = self.host
+        port = self.port or self.default_port
+        last_error = None
+
+        for family, socktype, proto, _, sockaddr in socket.getaddrinfo(
+            host, port, socket.AF_INET, socket.SOCK_STREAM
+        ):
+            sock = None
+            try:
+                sock = socket.socket(family, socktype, proto)
+                if self.timeout is not socket._GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(self.timeout)
+                if self.source_address:
+                    sock.bind(self.source_address)
+                sock.connect(sockaddr)
+
+                if self._tunnel_host:
+                    self.sock = sock
+                    self._tunnel()
+
+                self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+                return
+            except OSError as exc:
+                last_error = exc
+                if sock is not None:
+                    try:
+                        sock.close()
+                    except OSError:
+                        pass
+
+        if last_error is not None:
+            raise last_error
+
+        raise OSError("No IPv4 address found for {0}".format(host))
+
+
+class IPv4HTTPSHandler(urllib.request.HTTPSHandler):
+    def __init__(self):
+        super().__init__(context=ssl.create_default_context())
+
+    def https_open(self, req):
+        return self.do_open(IPv4HTTPSConnection, req)
 
 
 def utc_now():
@@ -138,6 +187,7 @@ class TelegramPaidMediaBot:
             raise RuntimeError("TG_BOT_TOKEN is required")
 
         self.api_base = "https://api.telegram.org/bot{0}/".format(self.token)
+        self.url_opener = urllib.request.build_opener(IPv4HTTPSHandler())
         self.admin_ids = parse_admin_ids(os.environ.get("TG_ADMIN_IDS", ""))
         self.data_dir = os.environ.get("TG_DATA_DIR", "/var/lib/tg-paidmedia")
         self.catalog_path = os.environ.get(
@@ -264,7 +314,7 @@ class TelegramPaidMediaBot:
         )
 
         try:
-            with urllib.request.urlopen(
+            with self.url_opener.open(
                 request, timeout=timeout or (self.poll_timeout + 15)
             ) as response:
                 data = json.load(response)
