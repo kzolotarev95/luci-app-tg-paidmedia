@@ -365,7 +365,17 @@ return view.extend({
 				overflow: hidden;
 			}
 
+			.tg-paidmedia-info-panel {
+				overflow: hidden;
+			}
+
 			.tg-paidmedia-log-toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .75rem;
+			}
+
+			.tg-paidmedia-info-toolbar {
 				display: flex;
 				flex-wrap: wrap;
 				gap: .75rem;
@@ -388,12 +398,64 @@ return view.extend({
 				background: linear-gradient(180deg, rgba(92, 70, 35, 0.86), rgba(67, 49, 22, 0.9));
 			}
 
+			.tg-paidmedia-info-toggle {
+				border-color: rgba(255, 196, 92, 0.3);
+				background: linear-gradient(180deg, rgba(114, 82, 27, 0.9), rgba(82, 58, 15, 0.94));
+				color: #fff1c5;
+			}
+
 			.tg-paidmedia-log-body {
+				display: block;
+			}
+
+			.tg-paidmedia-info-body {
 				display: block;
 			}
 
 			.tg-paidmedia-log-panel.is-collapsed .tg-paidmedia-log-body {
 				display: none;
+			}
+
+			.tg-paidmedia-info-panel.is-collapsed .tg-paidmedia-info-body {
+				display: none;
+			}
+
+			.tg-paidmedia-info-text {
+				color: var(--tg-text-soft);
+				line-height: 1.68;
+			}
+
+			.tg-paidmedia-info-list {
+				margin: .4rem 0 0;
+				padding-left: 1.15rem;
+				color: var(--tg-text-soft);
+				line-height: 1.68;
+			}
+
+			.tg-paidmedia-info-list li + li {
+				margin-top: .4rem;
+			}
+
+			.tg-paidmedia-info-steps {
+				margin-top: 1rem;
+			}
+
+			.tg-paidmedia-info-links {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .65rem .9rem;
+				margin-top: .8rem;
+			}
+
+			.tg-paidmedia-info-links a {
+				color: var(--tg-accent);
+				font-weight: 700;
+				text-decoration: none;
+			}
+
+			.tg-paidmedia-info-links a:hover {
+				color: #9cecff;
+				text-decoration: underline;
 			}
 
 			.tg-paidmedia-log {
@@ -847,6 +909,74 @@ return view.extend({
 		dom.content(toggleButton, [ collapsed ? '\uD83D\uDCC2 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0436\u0443\u0440\u043D\u0430\u043B' : '\uD83D\uDCD5 \u0421\u043A\u0440\u044B\u0442\u044C \u0436\u0443\u0440\u043D\u0430\u043B' ]);
 	},
 
+	toggleInfoPanel: function(infoSection, toggleButton) {
+		var collapsed = infoSection.classList.toggle('is-collapsed');
+		dom.content(toggleButton, [ collapsed ? '\u2B50 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' : '\u2B50 \u0421\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
+	},
+
+	buildWithdrawalInfoSection: function() {
+		return E('div', { 'class': 'tg-paidmedia-info-text' }, [
+			E('p', {}, [ '1. Личные Stars на аккаунте Telegram вывести на свой баланс нельзя. В официальных Terms сказано, что Stars в personal balance нельзя withdraw или transfer.' ]),
+			E('p', {}, [ '2. Stars, которые заработал бот, лежат не в личном балансе, а в отдельном балансе бота. Их можно использовать на Telegram Ads или принять как reward через Fragment.' ]),
+			E('p', {}, [ 'Для ботов Telegram прямо пишет:' ]),
+			E('ul', { 'class': 'tg-paidmedia-info-list' }, [
+				E('li', {}, [ 'заработанные Stars видны в балансе, доступном с аккаунта-владельца бота;' ]),
+				E('li', {}, [ 'rewards обрабатываются через Fragment;' ]),
+				E('li', {}, [ 'Stars могут стать доступны для rewards не сразу, а до 21 дня после получения.' ])
+			]),
+			E('div', { 'class': 'tg-paidmedia-info-steps' }, [
+				E('p', {}, [ 'Если по-простому, то схема такая:' ]),
+				E('ol', { 'class': 'tg-paidmedia-info-list' }, [
+					E('li', {}, [ 'продажи пришли в баланс бота;' ]),
+					E('li', {}, [ 'ждёшь до 21 дня, пока сумма станет доступной;' ]),
+					E('li', {}, [ 'заходишь с аккаунта-владельца бота в официальный Telegram client;' ]),
+					E('li', {}, [ 'открываешь страницу баланса/дохода бота;' ]),
+					E('li', {}, [ 'выбираешь Accept rewards / вывод через Fragment;' ]),
+					E('li', {}, [ 'дальше уже в Fragment указываешь кошелёк/получение reward.' ])
+				])
+			]),
+			E('div', { 'class': 'tg-paidmedia-info-steps' }, [
+				E('p', {}, [ 'Если кнопки вывода нет, обычно причина одна из этих:' ]),
+				E('ul', { 'class': 'tg-paidmedia-info-list' }, [
+					E('li', {}, [ 'Stars ещё младше 21 дня;' ]),
+					E('li', {}, [ 'ты открыт не с аккаунта-владельца бота;' ]),
+					E('li', {}, [ 'Fragment недоступен для региона или аккаунта;' ]),
+					E('li', {}, [ 'открыт не официальный клиент Telegram.' ])
+				])
+			]),
+			E('div', { 'class': 'tg-paidmedia-info-steps' }, [
+				E('p', {}, [ 'Источники:' ]),
+				E('div', { 'class': 'tg-paidmedia-info-links' }, [
+					E('a', {
+						'href': 'https://telegram.org/tos/stars',
+						'target': '_blank',
+						'rel': 'noopener noreferrer'
+					}, [ 'Telegram Stars Terms' ]),
+					E('a', {
+						'href': 'https://core.telegram.org/bots/payments-stars',
+						'target': '_blank',
+						'rel': 'noopener noreferrer'
+					}, [ 'Bot Payments for Stars' ]),
+					E('a', {
+						'href': 'https://telegram.org/tos/bot-developers?setln=ko',
+						'target': '_blank',
+						'rel': 'noopener noreferrer'
+					}, [ 'Bot Developer Terms' ]),
+					E('a', {
+						'href': 'https://core.telegram.org/api/stars',
+						'target': '_blank',
+						'rel': 'noopener noreferrer'
+					}, [ 'Telegram Stars API' ]),
+					E('a', {
+						'href': 'https://fragment.com/',
+						'target': '_blank',
+						'rel': 'noopener noreferrer'
+					}, [ 'Fragment' ])
+				])
+			])
+		]);
+	},
+
 	copyLog: function(logTarget) {
 		var text = String(logTarget._rawText || '').trim();
 
@@ -959,6 +1089,26 @@ return view.extend({
 	render: function(data) {
 		var statusTarget = E('div', { 'class': 'tg-paidmedia-section' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0441\u0442\u0430\u0442\u0443\u0441\u0430...' ]);
 		var logTarget = E('div', { 'class': 'tg-paidmedia-log' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043b\u043e\u0433\u043e\u0432...' ]);
+		var infoToggle = E('button', {
+			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-info-toggle',
+			'click': ui.createHandlerFn(this, function() {
+				this.toggleInfoPanel(infoSection, infoToggle);
+			})
+		}, [ '\u2B50 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
+		var infoSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-info-panel is-collapsed' }, [
+			E('div', { 'class': 'tg-paidmedia-section-head' }, [
+				E('div', {}, [
+					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u0412\u044B\u0432\u043E\u0434 \u0437\u0432\u0435\u0437\u0434' ]),
+					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0431\u043B\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C, \u043A\u0430\u043A Telegram Stars \u0432\u044B\u0432\u043E\u0434\u044F\u0442\u0441\u044F \u0443 \u0431\u043E\u0442\u0430 \u0438 \u043F\u043E\u0447\u0435\u043C\u0443 \u043A\u043D\u043E\u043F\u043A\u0430 reward \u043C\u043E\u0436\u0435\u0442 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C\u0441\u044F.' ])
+				]),
+				E('div', { 'class': 'tg-paidmedia-info-toolbar' }, [
+					infoToggle
+				])
+			]),
+			E('div', { 'class': 'tg-paidmedia-info-body' }, [
+				this.buildWithdrawalInfoSection()
+			])
+		]);
 		var logToggle = E('button', {
 			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-log-toggle',
 			'click': ui.createHandlerFn(this, function() {
@@ -1004,20 +1154,12 @@ return view.extend({
 					E('div', { 'class': 'tg-paidmedia-orb tg-paidmedia-orb-one' }),
 					E('div', { 'class': 'tg-paidmedia-orb tg-paidmedia-orb-two' }),
 					E('div', { 'class': 'tg-paidmedia-hero' }, [
-						E('div', { 'class': 'tg-paidmedia-hero-topline' }, [
-							E('div', { 'class': 'tg-paidmedia-pillbar' }, [
-								E('span', { 'class': 'tg-paidmedia-pill' }, [ 'Telegram Stars Control' ]),
-								E('span', { 'class': 'tg-paidmedia-pill' }, [ '\u041F\u043B\u0430\u0442\u043D\u044B\u0435 \u043F\u043E\u0441\u0442\u044B \u0438 \u0432\u0438\u0442\u0440\u0438\u043D\u0430' ])
-							]),
-							E('div', { 'class': 'tg-paidmedia-pillbar' }, [
-								E('span', { 'class': 'tg-paidmedia-pill' }, [ '\u041F\u0440\u043E\u0437\u0440\u0430\u0447\u043D\u0430\u044F LuCI-\u043F\u0430\u043D\u0435\u043B\u044C' ])
-							])
-						]),
 						E('p', { 'class': 'tg-paidmedia-kicker' }, [ '\u0426\u0435\u043D\u0442\u0440 \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u0432 Telegram' ]),
 						E('h2', { 'class': 'tg-paidmedia-title' }, [ '\u041f\u0430\u043d\u0435\u043b\u044c \u0443\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f TG Paid Media' ]),
 						E('p', { 'class': 'tg-paidmedia-lead' }, [ '\u041E\u0434\u043D\u0438\u043C \u0432\u0437\u0433\u043B\u044F\u0434\u043E\u043C \u0432\u0438\u0434\u043D\u043E \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u0435 \u0431\u043E\u0442\u0430, \u0431\u0430\u043B\u0430\u043D\u0441 Stars, \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u043F\u043E\u043A\u0443\u043F\u043A\u0438 \u0438 \u043F\u0440\u043E\u0431\u043B\u0435\u043C\u044B \u0441 \u0437\u0430\u043F\u0443\u0441\u043A\u043E\u043C. \u041D\u0438\u0436\u0435 \u043C\u043E\u0436\u043D\u043E \u0441\u0440\u0430\u0437\u0443 \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C \u0441\u0435\u0440\u0432\u0438\u0441, \u043E\u0442\u043A\u0440\u044B\u0442\u044C \u043B\u043E\u0433 \u0438 \u043F\u043E\u0434\u043A\u0440\u0443\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0431\u0435\u0437 \u0445\u0430\u043E\u0441\u0430.' ])
 					]),
 					statusTarget,
+					infoSection,
 					logSection,
 					E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-form-wrap' }, [ formNode ])
 				])
