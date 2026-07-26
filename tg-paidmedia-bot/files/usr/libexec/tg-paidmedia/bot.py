@@ -1113,16 +1113,20 @@ class TelegramPaidMediaBot:
             self.yoomoney_webhook_path,
         )
 
-    def send_photo(self, chat_id, file_id, caption=""):
+    def send_photo(self, chat_id, file_id, caption="", reply_markup=None):
         payload = {"chat_id": chat_id, "photo": file_id}
         if caption:
             payload["caption"] = safe_caption(caption)
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
         return self.api_call("sendPhoto", payload)
 
-    def send_video(self, chat_id, file_id, caption=""):
+    def send_video(self, chat_id, file_id, caption="", reply_markup=None):
         payload = {"chat_id": chat_id, "video": file_id}
         if caption:
             payload["caption"] = safe_caption(caption)
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
         return self.api_call("sendVideo", payload)
 
     def send_media_group(self, chat_id, media_entries, caption=""):
@@ -2989,44 +2993,44 @@ class TelegramPaidMediaBot:
         if not self.catalog["items"]:
             lines.append("Пока нет опубликованных товаров.")
         else:
-            lines.append("Доступные товары:")
-            lines.append("")
-            for item in self.catalog["items"]:
-                media_type = "Фото" if item["kind"] == "photo" else "Видео"
-                price_parts = ["⭐ {0}".format(item["price"])]
-                rub_price = self.item_rub_price(item)
-                if rub_price > 0:
-                    rub_methods = []
-                    if self.has_platega_credentials():
-                        rub_methods.append("СБП")
-                    if self.has_yoomoney_credentials():
-                        rub_methods.append("ЮMoney")
-
-                    if rub_methods:
-                        price_parts.append(
-                            "{0} RUB через {1}".format(
-                                self.format_rub_amount(rub_price),
-                                " / ".join(rub_methods),
-                            )
-                        )
-                    else:
-                        price_parts.append(
-                            "{0} RUB".format(self.format_rub_amount(rub_price))
-                        )
-                lines.append("#{0} • {1}".format(item["id"], media_type))
-                lines.append(truncate_text(item.get("title", ""), 72))
-                lines.append(" / ".join(price_parts))
-                lines.append("")
+            lines.append("Выберите товар ниже.")
 
         if self.catalog["items"]:
-            if lines[-1] == "":
-                lines.pop()
-            lines.extend(["", "Нажмите кнопку под нужным товаром."])
+            lines.extend(["", "Медиа и кнопки покупки будут показаны ниже."])
 
         if include_admin_hint and self.admin_ids:
             lines.extend(["", "Команды админа: /admin"])
 
         return "\n".join(lines)
+
+    def build_catalog_item_caption(self, item):
+        media_type = "Фото" if item["kind"] == "photo" else "Видео"
+        body = safe_caption(item.get("caption") or item.get("title") or "").strip()
+        price_parts = ["⭐ {0}".format(item["price"])]
+        rub_price = self.item_rub_price(item)
+
+        if rub_price > 0:
+            rub_methods = []
+            if self.has_platega_credentials():
+                rub_methods.append("СБП")
+            if self.has_yoomoney_credentials():
+                rub_methods.append("ЮMoney")
+
+            if rub_methods:
+                price_parts.append(
+                    "{0} RUB через {1}".format(
+                        self.format_rub_amount(rub_price),
+                        " / ".join(rub_methods),
+                    )
+                )
+            else:
+                price_parts.append("{0} RUB".format(self.format_rub_amount(rub_price)))
+
+        lines = ["#{0} • {1}".format(item["id"], media_type)]
+        if body:
+            lines.extend(["", body])
+        lines.extend(["", " / ".join(price_parts)])
+        return safe_caption("\n".join(lines))
 
     def build_catalog_keyboard(self):
         rows = []
@@ -3145,8 +3149,40 @@ class TelegramPaidMediaBot:
         self.send_message(
             chat_id,
             self.build_catalog_text(include_admin_hint=self.is_admin(user_id)),
-            reply_markup=self.build_catalog_keyboard(),
         )
+        for item in self.catalog["items"]:
+            media_entries = normalize_media_entries(item, item.get("kind", "photo"))
+            caption = self.build_catalog_item_caption(item)
+            keyboard = self.build_item_purchase_keyboard(item)
+
+            if not media_entries:
+                self.send_message(chat_id, caption, reply_markup=keyboard)
+                continue
+
+            if len(media_entries) == 1:
+                entry = media_entries[0]
+                if entry["type"] == "photo":
+                    self.send_photo(
+                        chat_id,
+                        entry["file_id"],
+                        caption=caption,
+                        reply_markup=keyboard,
+                    )
+                else:
+                    self.send_video(
+                        chat_id,
+                        entry["file_id"],
+                        caption=caption,
+                        reply_markup=keyboard,
+                    )
+                continue
+
+            self.send_media_group(chat_id, media_entries, caption=caption)
+            self.send_message(
+                chat_id,
+                "Выберите способ покупки для товара #{0}:".format(item["id"]),
+                reply_markup=keyboard,
+            )
 
     def send_admin_items(self, chat_id):
         self.send_message(
