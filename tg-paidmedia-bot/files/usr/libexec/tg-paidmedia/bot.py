@@ -1931,10 +1931,11 @@ class TelegramPaidMediaBot:
         command = head.split("@", 1)[0].lower()
         return command, tail.strip()
 
-    def set_pending_upload(self, chat_id, kind, price, title, publish_chat_id=None):
+    def set_pending_upload(self, chat_id, kind, price, title, publish_chat_id=None, rub_price=0):
         pending_upload = {
             "kind": kind,
             "price": int(price),
+            "rub_price": round(float(rub_price or 0), 2),
             "title": title.strip() or "{0} {1}".format(kind.title(), self.catalog["next_id"]),
             "media": [],
             "caption": "",
@@ -1958,8 +1959,8 @@ class TelegramPaidMediaBot:
         self.save_state()
 
     def parse_price_and_title(self, raw_value):
-        parts = (raw_value or "").strip().split(" ", 1)
-        if len(parts) != 2:
+        parts = (raw_value or "").strip().split()
+        if len(parts) < 2:
             raise ValueError("missing title")
 
         try:
@@ -1967,12 +1968,23 @@ class TelegramPaidMediaBot:
         except ValueError as exc:
             raise ValueError("invalid price") from exc
 
-        title = parts[1].strip()
+        rub_price = 0
+        title_parts = parts[1:]
+        if len(parts) >= 3:
+            try:
+                rub_price = round(float(parts[1].replace(",", ".")), 2)
+                title_parts = parts[2:]
+            except ValueError:
+                rub_price = 0
+
+        title = " ".join(title_parts).strip()
         if price <= 0:
             raise ValueError("invalid price")
+        if rub_price < 0:
+            raise ValueError("invalid rub price")
         if not title:
             raise ValueError("missing title")
-        return price, title
+        return price, rub_price, title
 
     def handle_pending_action_input(self, chat_id, user_id, text, pending_action):
         if not self.is_admin(user_id):
@@ -1982,12 +1994,16 @@ class TelegramPaidMediaBot:
         action_type = pending_action.get("type")
         if action_type in {"create_photo_post", "create_video_post"}:
             try:
-                price, title = self.parse_price_and_title(text)
+                price, rub_price, title = self.parse_price_and_title(text)
             except ValueError:
                 self.send_with_main_keyboard(
                     chat_id,
                     user_id,
-                    "Введите данные в формате: <цена> <название>\nПример: 152 Фото Ника",
+                    (
+                        "Введите данные в формате: <stars> <название> или <stars> <rub> <название>\n"
+                        "Примеры: 152 Фото Ника\n"
+                        "или 152 299 Фото Ника"
+                    ),
                 )
                 return True
 
@@ -1998,6 +2014,7 @@ class TelegramPaidMediaBot:
                 price,
                 title,
                 publish_chat_id=chat_id,
+                rub_price=rub_price,
             )
             self.clear_pending_action(chat_id)
             self.send_with_main_keyboard(
@@ -2005,8 +2022,15 @@ class TelegramPaidMediaBot:
                 user_id,
                 (
                     "Отлично. Теперь отправьте одно {0}, и я сразу опубликую платный пост "
-                    "с кнопкой покупки за Stars."
-                ).format("фото" if media_kind == "photo" else "видео"),
+                    "с кнопками оплаты.{1}"
+                ).format(
+                    "фото" if media_kind == "photo" else "видео",
+                    (
+                        "\nRUB-цена: {0}".format(self.format_rub_amount(rub_price))
+                        if rub_price > 0
+                        else ""
+                    ),
+                ),
             )
             return True
 
@@ -2109,7 +2133,12 @@ class TelegramPaidMediaBot:
             self.send_with_main_keyboard(
                 chat_id,
                 user_id,
-                "Введите цену и название одним сообщением.\nПример: 152 Фото Ника",
+                (
+                    "Введите цену и название одним сообщением.\n"
+                    "Формат: <stars> <название> или <stars> <rub> <название>\n"
+                    "Пример: 152 Фото Ника\n"
+                    "Или: 152 299 Фото Ника"
+                ),
             )
             return True
 
@@ -2118,7 +2147,12 @@ class TelegramPaidMediaBot:
             self.send_with_main_keyboard(
                 chat_id,
                 user_id,
-                "Введите цену и название одним сообщением.\nПример: 250 Закрытое видео",
+                (
+                    "Введите цену и название одним сообщением.\n"
+                    "Формат: <stars> <название> или <stars> <rub> <название>\n"
+                    "Пример: 250 Закрытое видео\n"
+                    "Или: 250 499 Закрытое видео"
+                ),
             )
             return True
 
@@ -2184,6 +2218,7 @@ class TelegramPaidMediaBot:
             "kind": pending["kind"],
             "file_id": file_id,
             "price": int(pending["price"]),
+            "rub_price": round(float(pending.get("rub_price") or 0), 2),
             "title": pending["title"],
             "caption": safe_caption(message.get("caption", "")),
         }
@@ -2201,10 +2236,19 @@ class TelegramPaidMediaBot:
                 chat_id,
                 (
                     "Платный пост #{0} сохранен и опубликован.\n"
-                    "Цена: {1} Stars\n"
-                    "Уведомлений отправлено: {2}\n"
+                    "Цена: {1} Stars{2}\n"
+                    "Уведомлений отправлено: {3}\n"
                     "Чтобы отправить его в другой чат позже, используйте /publish {0}."
-                ).format(item_id, item["price"], delivered),
+                ).format(
+                    item_id,
+                    item["price"],
+                    (
+                        " / {0} RUB".format(self.format_rub_amount(item["rub_price"]))
+                        if item.get("rub_price", 0) > 0
+                        else ""
+                    ),
+                    delivered,
+                ),
             )
             return
 
@@ -2212,10 +2256,18 @@ class TelegramPaidMediaBot:
             chat_id,
             (
                 "Платный пост #{0} сохранен.\n"
-                "Цена: {1} Stars\n"
+                "Цена: {1} Stars{2}\n"
                 "Используйте /publish {0}, чтобы отправить его в текущий чат, "
                 "или /items для списка постов."
-            ).format(item_id, item["price"]),
+            ).format(
+                item_id,
+                item["price"],
+                (
+                    " / {0} RUB".format(self.format_rub_amount(item["rub_price"]))
+                    if item.get("rub_price", 0) > 0
+                    else ""
+                ),
+            ),
         )
 
     def collect_pending_media(self, chat_id, message, pending):
@@ -2265,6 +2317,7 @@ class TelegramPaidMediaBot:
             "file_id": media_entries[0]["file_id"],
             "media": media_entries,
             "price": int(pending["price"]),
+            "rub_price": round(float(pending.get("rub_price") or 0), 2),
             "title": pending["title"],
             "caption": safe_caption(pending.get("caption", "")),
         }
@@ -2284,10 +2337,20 @@ class TelegramPaidMediaBot:
                 (
                     "Платный пост #{0} сохранен и опубликован.\n"
                     "Файлов: {1}\n"
-                    "Цена: {2} Stars\n"
-                    "Уведомлений отправлено: {3}\n"
+                    "Цена: {2} Stars{3}\n"
+                    "Уведомлений отправлено: {4}\n"
                     "Чтобы отправить его в другой чат позже, используйте /publish {0}."
-                ).format(item_id, media_count, item["price"], delivered),
+                ).format(
+                    item_id,
+                    media_count,
+                    item["price"],
+                    (
+                        " / {0} RUB".format(self.format_rub_amount(item["rub_price"]))
+                        if item.get("rub_price", 0) > 0
+                        else ""
+                    ),
+                    delivered,
+                ),
             )
             return True
 
@@ -2296,9 +2359,18 @@ class TelegramPaidMediaBot:
             (
                 "Платный пост #{0} сохранен.\n"
                 "Файлов: {1}\n"
-                "Цена: {2} Stars\n"
+                "Цена: {2} Stars{3}\n"
                 "Используйте /publish {0}, чтобы отправить его в текущий чат, или /items для списка постов."
-            ).format(item_id, media_count, item["price"]),
+            ).format(
+                item_id,
+                media_count,
+                item["price"],
+                (
+                    " / {0} RUB".format(self.format_rub_amount(item["rub_price"]))
+                    if item.get("rub_price", 0) > 0
+                    else ""
+                ),
+            ),
         )
         return True
 
@@ -2363,30 +2435,43 @@ class TelegramPaidMediaBot:
             return
 
         if command in {"/addphoto", "/addvideo", "/postphoto", "/postvideo"}:
-            parts = args.split(" ", 1)
-            if not parts or not parts[0]:
-                self.send_message(chat_id, "Использование: {0} <stars> <название>".format(command))
-                return
             try:
-                price = int(parts[0])
+                price, rub_price, title = self.parse_price_and_title(args)
             except ValueError:
-                self.send_message(chat_id, "Цена должна быть целым числом Stars.")
-                return
-            if price < 1:
-                self.send_message(chat_id, "Цена должна быть не меньше 1 Stars.")
+                self.send_message(
+                    chat_id,
+                    (
+                        "Использование: {0} <stars> <название> или {0} <stars> <rub> <название>\n"
+                        "Пример: {0} 150 Фото Ника\n"
+                        "Или: {0} 150 299 Фото Ника"
+                    ).format(command),
+                )
                 return
 
-            title = parts[1] if len(parts) > 1 else ""
             kind = "photo" if command in {"/addphoto", "/postphoto"} else "video"
             publish_chat_id = chat_id if command in {"/postphoto", "/postvideo"} else None
-            self.set_pending_upload(chat_id, kind, price, title, publish_chat_id=publish_chat_id)
+            self.set_pending_upload(
+                chat_id,
+                kind,
+                price,
+                title,
+                publish_chat_id=publish_chat_id,
+                rub_price=rub_price,
+            )
             self.send_message(
                 chat_id,
                 (
                     "Режим загрузки включен для {0}.\n"
-                    "{1}"
+                    "Цена: {1} Stars{2}\n"
+                    "{3}"
                 ).format(
                     "фото" if kind == "photo" else "видео",
+                    price,
+                    (
+                        " / {0} RUB".format(self.format_rub_amount(rub_price))
+                        if rub_price > 0
+                        else ""
+                    ),
                     "Отправьте файл, и бот сразу опубликует платный пост в этот чат."
                     if publish_chat_id is not None
                     else "Отправьте файл, и бот сохранит его в каталог.",
