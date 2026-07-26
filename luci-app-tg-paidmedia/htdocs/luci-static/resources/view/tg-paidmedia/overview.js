@@ -507,11 +507,11 @@ return view.extend({
 				--tg-focus-border: #7aa7dd;
 				--tg-focus-ring: 0 0 0 2px rgba(11, 111, 219, 0.08);
 				--tg-tab-bg: #eef2f6;
-				padding: 12px 0 22px;
+				padding: 8px 0 18px;
 				color: var(--tg-text);
 				background: transparent;
 				font-family: inherit;
-				font-size: .9rem;
+				font-size: .82rem;
 			}
 
 			.tg-paidmedia-page.is-dark-theme {
@@ -570,7 +570,7 @@ return view.extend({
 			.tg-paidmedia-shell {
 				max-width: 1180px;
 				margin: 0 auto;
-				padding: 0 14px;
+				padding: 0 12px;
 			}
 
 			.tg-paidmedia-orb {
@@ -663,7 +663,7 @@ return view.extend({
 
 			.tg-paidmedia-section {
 				margin-bottom: 1rem;
-				padding: .92rem 1rem;
+				padding: .78rem .86rem;
 				border: 1px solid var(--tg-border);
 				border-radius: 10px;
 				background: var(--tg-surface);
@@ -683,34 +683,34 @@ return view.extend({
 				flex-wrap: wrap;
 				align-items: flex-start;
 				justify-content: space-between;
-				gap: 1rem;
-				margin-bottom: 1rem;
+				gap: .8rem;
+				margin-bottom: .82rem;
 			}
 
 			.tg-paidmedia-section-subtitle {
-				margin: .3rem 0 0;
+				margin: .22rem 0 0;
 				color: var(--tg-text-soft);
-				font-size: .88rem;
-				line-height: 1.5;
+				font-size: .8rem;
+				line-height: 1.42;
 			}
 
 			.tg-paidmedia-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-				gap: .62rem;
+				grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+				gap: .5rem;
 			}
 
 			.tg-paidmedia-card {
-				padding: .72rem .8rem;
+				padding: .58rem .66rem;
 				border: 1px solid var(--tg-border);
 				border-radius: 8px;
 				background: var(--tg-surface-soft);
 			}
 
 			.tg-paidmedia-card-label {
-				margin: 0 0 .45rem;
+				margin: 0 0 .34rem;
 				color: var(--tg-text-muted);
-				font-size: .72rem;
+				font-size: .66rem;
 				font-weight: 600;
 				letter-spacing: .02em;
 				text-transform: uppercase;
@@ -719,14 +719,14 @@ return view.extend({
 			.tg-paidmedia-card-value {
 				margin: 0;
 				color: var(--tg-text);
-				font-size: .94rem;
+				font-size: .84rem;
 				font-weight: 600;
-				line-height: 1.35;
+				line-height: 1.28;
 				word-break: break-word;
 			}
 
 			.tg-paidmedia-card-subtle {
-				font-size: .86rem;
+				font-size: .78rem;
 				font-weight: 500;
 			}
 
@@ -734,17 +734,17 @@ return view.extend({
 				display: inline-flex;
 				align-items: center;
 				gap: .45rem;
-				padding: .3rem .65rem;
+				padding: .24rem .52rem;
 				border-radius: 999px;
-				font-size: .84rem;
+				font-size: .74rem;
 				font-weight: 600;
 				line-height: 1;
 			}
 
 			.tg-paidmedia-badge::before {
 				content: "";
-				width: .48rem;
-				height: .48rem;
+				width: .4rem;
+				height: .4rem;
 				border-radius: 50%;
 				background: currentColor;
 			}
@@ -764,13 +764,13 @@ return view.extend({
 			.tg-paidmedia-actions {
 				display: flex;
 				flex-wrap: wrap;
-				gap: .65rem;
-				margin-top: 1rem;
+				gap: .48rem;
+				margin-top: .72rem;
 			}
 
 			.tg-paidmedia-actions .btn {
-				min-width: 10rem;
-				padding: .5rem .8rem;
+				min-width: 8.6rem;
+				padding: .42rem .64rem;
 				border-radius: 6px;
 				font-weight: 600;
 			}
@@ -802,24 +802,24 @@ return view.extend({
 			.tg-paidmedia-log-toolbar {
 				display: flex;
 				flex-wrap: wrap;
-				gap: .75rem;
+				gap: .55rem;
 			}
 
 			.tg-paidmedia-info-toolbar {
 				display: flex;
 				flex-wrap: wrap;
-				gap: .75rem;
+				gap: .55rem;
 			}
 
 			.tg-paidmedia-payments-toolbar {
 				display: flex;
 				flex-wrap: wrap;
-				gap: .75rem;
+				gap: .55rem;
 			}
 
 			.tg-paidmedia-toolbar-btn {
-				min-width: 9rem;
-				padding: .46rem .78rem;
+				min-width: 7.9rem;
+				padding: .38rem .62rem;
 				border-radius: 6px;
 				font-weight: 600;
 			}
@@ -939,12 +939,12 @@ return view.extend({
 				top: 50%;
 				left: calc(100% + .65rem);
 				width: min(24rem, calc(100vw - 6rem));
-				padding: .8rem .9rem;
+				padding: .66rem .74rem;
 				border: 1px solid var(--tg-tooltip-border);
 				border-radius: 8px;
 				background: var(--tg-tooltip-bg);
 				color: var(--tg-text-soft);
-				font-size: .84rem;
+				font-size: .76rem;
 				font-weight: 500;
 				line-height: 1.55;
 				text-transform: none;
@@ -967,17 +967,17 @@ return view.extend({
 			}
 
 			.tg-paidmedia-log {
-				max-height: 28rem;
+				max-height: 24rem;
 				overflow: auto;
 				margin: 0;
-				padding: .9rem 1rem;
+				padding: .7rem .78rem;
 				border-radius: 8px;
 				border: 1px solid var(--tg-border);
 				background: var(--tg-log-bg);
 				color: var(--tg-text);
 				font-family: "Consolas", "Courier New", monospace;
-				font-size: .85rem;
-				line-height: 1.55;
+				font-size: .76rem;
+				line-height: 1.45;
 				white-space: pre-wrap;
 				word-break: break-word;
 				user-select: text;
@@ -1022,7 +1022,7 @@ return view.extend({
 
 			.tg-paidmedia-error {
 				margin-bottom: 1rem;
-				padding: .9rem 1rem;
+				padding: .72rem .78rem;
 				border: 1px solid var(--tg-error-panel-border);
 				border-radius: 8px;
 				background: var(--tg-error-panel-bg);
@@ -1065,8 +1065,8 @@ return view.extend({
 
 			.tg-paidmedia-page .cbi-section,
 			.tg-paidmedia-page .cbi-section-node {
-				margin-top: .85rem;
-				padding: .95rem 1rem;
+				margin-top: .68rem;
+				padding: .78rem .82rem;
 				border: 1px solid var(--tg-border);
 				border-radius: 8px;
 				background: var(--tg-surface-soft);
@@ -1090,7 +1090,7 @@ return view.extend({
 			.tg-paidmedia-page textarea,
 			.tg-paidmedia-page select {
 				border: 1px solid var(--tg-input-border);
-				border-radius: 6px;
+				border-radius: 5px;
 				background: var(--tg-input-bg);
 				color: inherit;
 				box-shadow: none;
@@ -1150,8 +1150,8 @@ return view.extend({
 				flex-wrap: wrap;
 				align-items: flex-start;
 				justify-content: space-between;
-				gap: .9rem;
-				margin: 0 0 1.1rem;
+				gap: .72rem;
+				margin: 0 0 .86rem;
 			}
 
 			.tg-paidmedia-headline {
@@ -1161,18 +1161,18 @@ return view.extend({
 			.tg-paidmedia-page-title {
 				margin: 0;
 				color: var(--tg-text);
-				font-size: clamp(1.72rem, 3.5vw, 2.35rem);
+				font-size: clamp(1.45rem, 3vw, 1.95rem);
 				font-weight: 800;
 				line-height: 1.02;
 				letter-spacing: -.03em;
 			}
 
 			.tg-paidmedia-page-subtitle {
-				margin: .35rem 0 0;
+				margin: .22rem 0 0;
 				color: var(--tg-text-soft);
-				font-size: .88rem;
+				font-size: .76rem;
 				font-weight: 500;
-				line-height: 1.5;
+				line-height: 1.36;
 			}
 
 			.tg-paidmedia-page-header-side,
@@ -1186,12 +1186,12 @@ return view.extend({
 				display: inline-flex;
 				align-items: center;
 				gap: .5rem;
-				padding: .54rem .88rem;
+				padding: .42rem .7rem;
 				border-radius: 999px;
 				border: 1px solid var(--tg-border);
 				background: var(--tg-surface-soft);
 				color: var(--tg-text);
-				font-size: .86rem;
+				font-size: .74rem;
 				font-weight: 700;
 				line-height: 1;
 				white-space: nowrap;
@@ -1199,8 +1199,8 @@ return view.extend({
 
 			.tg-paidmedia-top-badge::before {
 				content: "";
-				width: .46rem;
-				height: .46rem;
+				width: .36rem;
+				height: .36rem;
 				border-radius: 50%;
 				background: currentColor;
 				box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
@@ -1221,57 +1221,57 @@ return view.extend({
 			.tg-paidmedia-section,
 			.tg-paidmedia-page .cbi-section,
 			.tg-paidmedia-page .cbi-section-node {
-				border-radius: 16px;
+				border-radius: 14px;
 			}
 
 			.tg-paidmedia-section {
-				padding: 1rem 1.05rem 1.08rem;
+				padding: .82rem .88rem .9rem;
 			}
 
 			.tg-paidmedia-section-title-strong {
-				font-size: .95rem;
+				font-size: .84rem;
 				font-weight: 800;
 				letter-spacing: -.01em;
 			}
 
 			.tg-paidmedia-section-headlined {
-				margin-bottom: .95rem;
-				padding-bottom: .82rem;
+				margin-bottom: .72rem;
+				padding-bottom: .62rem;
 				border-bottom: 1px solid var(--tg-border);
 			}
 
 			.tg-paidmedia-status-note {
-				margin: .35rem 0 0;
+				margin: .22rem 0 0;
 				max-width: 48rem;
 			}
 
 			.tg-paidmedia-card {
-				min-height: 5.15rem;
-				padding: .82rem .86rem .88rem;
-				border-radius: 12px;
+				min-height: 4.35rem;
+				padding: .64rem .68rem .7rem;
+				border-radius: 10px;
 			}
 
 			.tg-paidmedia-card-label {
-				font-size: .74rem;
+				font-size: .64rem;
 				letter-spacing: .03em;
 			}
 
 			.tg-paidmedia-card-value {
-				font-size: .93rem;
+				font-size: .82rem;
 				font-weight: 700;
 			}
 
 			.tg-paidmedia-actions {
-				gap: .6rem;
-				margin-top: .95rem;
+				gap: .46rem;
+				margin-top: .72rem;
 			}
 
 			.tg-paidmedia-action-btn,
 			.tg-paidmedia-btn-open {
-				min-width: 9.5rem;
-				padding: .66rem .95rem;
-				border-radius: 12px;
-				font-size: .87rem;
+				min-width: 8rem;
+				padding: .5rem .72rem;
+				border-radius: 10px;
+				font-size: .76rem;
 				font-weight: 700;
 				transition: transform .14s ease, border-color .14s ease, background .14s ease;
 			}
@@ -1308,8 +1308,8 @@ return view.extend({
 			.tg-paidmedia-callout-panel .tg-paidmedia-section-head,
 			.tg-paidmedia-log-panel .tg-paidmedia-section-head,
 			.tg-paidmedia-payments-panel .tg-paidmedia-section-head {
-				margin-bottom: .86rem;
-				padding-bottom: .78rem;
+				margin-bottom: .68rem;
+				padding-bottom: .58rem;
 				border-bottom: 1px solid var(--tg-border);
 			}
 
@@ -1320,8 +1320,8 @@ return view.extend({
 			}
 
 			.tg-paidmedia-toolbar-btn {
-				border-radius: 12px;
-				padding: .62rem .88rem;
+				border-radius: 10px;
+				padding: .5rem .72rem;
 				font-weight: 700;
 			}
 
@@ -1329,14 +1329,14 @@ return view.extend({
 			.tg-paidmedia-page .cbi-map h4,
 			.tg-paidmedia-page .cbi-section h3,
 			.tg-paidmedia-page .cbi-section legend {
-				font-size: .94rem;
+				font-size: .82rem;
 				font-weight: 800;
 				letter-spacing: -.01em;
 			}
 
 			.tg-paidmedia-page .cbi-section,
 			.tg-paidmedia-page .cbi-section-node {
-				padding: .95rem .95rem 1rem;
+				padding: .78rem .78rem .82rem;
 			}
 
 			@media (max-width: 700px) {
