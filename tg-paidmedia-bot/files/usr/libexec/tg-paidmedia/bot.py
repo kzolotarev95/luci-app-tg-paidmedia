@@ -2940,9 +2940,9 @@ class TelegramPaidMediaBot:
         self.update_status(last_purchase=purchase_info)
 
         if user.get("id"):
-            thank_you = "Purchase confirmed. Thank you for supporting the shop."
+            thank_you = "Покупка подтверждена. Спасибо за поддержку магазина."
             if item:
-                thank_you += "\nUnlocked item: #{0} {1}".format(item["id"], item["title"])
+                thank_you += "\nОткрыт товар: #{0} {1}".format(item["id"], item["title"])
             self.send_message(user["id"], thank_you)
 
         self.append_recent_purchase(
