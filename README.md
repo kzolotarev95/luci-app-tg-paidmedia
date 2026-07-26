@@ -84,20 +84,6 @@ wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/
 LuCI -> Services -> TG Paid Media
 ```
 
-## Первый запуск за 5 минут
-
-### 1. Установите пакет
-
-Запустите команду установки выше от имени `root`.
-
-### 2. Откройте страницу LuCI
-
-Перейдите сюда:
-
-```text
-Services -> TG Paid Media
-```
-
 ### 3. Заполните базовые параметры бота
 
 В настройках укажите:
