@@ -1185,6 +1185,15 @@ return view.extend({
 				gap: .55rem;
 			}
 
+			.tg-paidmedia-payments-footer {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .55rem;
+				margin-top: .9rem;
+				padding-top: .72rem;
+				border-top: 1px solid var(--tg-border);
+			}
+
 			.tg-paidmedia-toolbar-btn {
 				min-width: 7.9rem;
 				padding: .38rem .62rem;
@@ -2879,12 +2888,12 @@ return view.extend({
 				E('div', {}, [
 					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u041F\u043B\u0430\u0442\u0435\u0436\u043D\u044B\u0435 \u0441\u0438\u0441\u0442\u0435\u043C\u044B' ]),
 					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0431\u043B\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0441\u0442\u0440\u043E\u0438\u0442\u044C Platega \u0438 \u043F\u043E\u0437\u0436\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0442\u044C \u0434\u0440\u0443\u0433\u0438\u0435 \u0441\u043F\u043E\u0441\u043E\u0431\u044B \u043E\u043F\u043B\u0430\u0442\u044B.' ])
-				]),
-				E('div', { 'class': 'tg-paidmedia-payments-toolbar' }, [
-					paymentsToggle
 				])
 			]),
-			paymentsBody
+			paymentsBody,
+			E('div', { 'class': 'tg-paidmedia-payments-footer' }, [
+				paymentsToggle
+			])
 		]);
 
 		return Promise.all([
