@@ -1,15 +1,15 @@
-# TG Paid Media for OpenWrt
+# TG Paid Media для OpenWrt
 
 <p align="center">
   <img src="./assets/bot-home-header.jpg" alt="TG Paid Media" width="100%" />
 </p>
 
 <p align="center">
-  <strong>Telegram Paid Media bot + LuCI panel + Telegram Stars + RUB payments in one OpenWrt package.</strong>
+  <strong>Telegram Paid Media бот + панель LuCI + Telegram Stars + RUB-платежи в одном пакете для OpenWrt.</strong>
 </p>
 
 <p align="center">
-  Run a paid content bot directly on your router, manage it from LuCI, accept Telegram Stars, connect SBP and YooMoney, and keep service status, logs, webhooks, and reverse tunnel under control from one place.
+  Запускайте бота с платным контентом прямо на роутере, управляйте им через LuCI, принимайте Telegram Stars, подключайте СБП и YooMoney и держите под контролем статус сервиса, логи, webhook и reverse tunnel в одном месте.
 </p>
 
 <p align="center">
@@ -20,160 +20,160 @@
   <img alt="YooMoney" src="https://img.shields.io/badge/YooMoney-ready-FCC521?style=for-the-badge">
 </p>
 
-## Contents
+## Содержание
 
-- [Why this project](#why-this-project)
-- [What you get](#what-you-get)
-- [Quick install](#quick-install)
-- [First launch in 5 minutes](#first-launch-in-5-minutes)
-- [Payments](#payments)
-- [LuCI highlights](#luci-highlights)
-- [Bot admin commands](#bot-admin-commands)
-- [Project structure](#project-structure)
-- [Who this is for](#who-this-is-for)
-- [Remove](#remove)
-- [License](#license)
+- [Зачем нужен этот проект](#зачем-нужен-этот-проект)
+- [Что вы получаете](#что-вы-получаете)
+- [Быстрая установка](#быстрая-установка)
+- [Первый запуск за 5 минут](#первый-запуск-за-5-минут)
+- [Платежи](#платежи)
+- [Что дает LuCI](#что-дает-luci)
+- [Команды администратора](#команды-администратора)
+- [Структура проекта](#структура-проекта)
+- [Для кого это](#для-кого-это)
+- [Удаление](#удаление)
+- [Лицензия](#лицензия)
 
-## Why this project
+## Зачем нужен этот проект
 
-`TG Paid Media` is for people who want a self-hosted Telegram paid content store without a separate VPS panel, bulky CMS, or custom backend. The project combines the bot runtime and the LuCI interface into one OpenWrt-friendly package.
+`TG Paid Media` создан для тех, кто хочет поднять self-hosted витрину платного контента в Telegram без отдельной VPS-панели, тяжелой CMS или самописного backend. Проект объединяет runtime бота и интерфейс LuCI в один пакет, удобный для OpenWrt.
 
-What makes it useful:
+Почему это удобно:
 
-- Sell photo and video content through Telegram Paid Media.
-- Accept native Telegram Stars payments.
-- Add RUB payments through `Platega` and `YooMoney`.
-- Run everything as an OpenWrt service.
-- Configure the bot from LuCI instead of editing files by hand.
-- Track health, logs, webhook state, and reverse tunnel status in one interface.
+- Продавайте фото и видео через Telegram Paid Media.
+- Принимайте нативные платежи в Telegram Stars.
+- Добавляйте RUB-платежи через `Platega` и `YooMoney`.
+- Запускайте все как обычный сервис OpenWrt.
+- Настраивайте бота через LuCI без ручного редактирования файлов.
+- Следите за состоянием сервиса, логами, webhook и reverse tunnel в одном интерфейсе.
 
-## What you get
+## Что вы получаете
 
-### Core features
+### Основные возможности
 
-- Telegram bot for paid media catalog and content delivery.
-- Catalog storage in `JSON` with persistent bot state.
-- Admin workflow for adding, editing, publishing, and deleting items.
-- Telegram Stars sales statistics and recent transaction visibility.
-- RUB pricing per item for external payment flows.
+- Telegram-бота для каталога платного контента и его выдачи.
+- Хранение каталога в `JSON` с сохранением состояния бота.
+- Админский workflow для добавления, редактирования, публикации и удаления товаров.
+- Статистику продаж в Telegram Stars и просмотр последних транзакций.
+- RUB-цены для каждого товара под внешние платежные сценарии.
 
-### OpenWrt and LuCI integration
+### Интеграция с OpenWrt и LuCI
 
-- Native LuCI page under `Services -> TG Paid Media`.
-- Start, stop, and restart buttons for the bot service.
-- Service overview with counters, last events, restart hints, and recent errors.
-- Built-in log viewer for fast debugging without extra shell work.
-- Settings screen for token, admin IDs, paths, payment configuration, and home header image.
+- Нативную страницу LuCI в `Services -> TG Paid Media`.
+- Кнопки запуска, остановки и перезапуска сервиса бота.
+- Обзор состояния сервиса со счетчиками, последними событиями, подсказками по рестартам и недавними ошибками.
+- Встроенный просмотр логов для быстрой диагностики без лишней работы в shell.
+- Экран настроек для токена, `Admin IDs`, путей, платежных параметров и домашней шапки.
 
-### Payment operations
+### Платежные возможности
 
-- `Platega` support for SBP payment flow.
-- `YooMoney` support with webhook endpoint and hosted payment flow.
-- Quick YooMoney health check for:
-  - service state
+- Поддержку `Platega` для оплаты через СБП.
+- Поддержку `YooMoney` с webhook endpoint и hosted payment flow.
+- Быструю мини-проверку YooMoney для:
+  - состояния сервиса
   - notification secret
-  - webhook availability
-  - reverse tunnel state
-- Quick `Reverse tunnel` on/off button directly inside the YooMoney mini-check.
+  - доступности webhook
+  - состояния reverse tunnel
+- Быструю кнопку включения и остановки `Reverse tunnel` прямо внутри мини-проверки YooMoney.
 
-### Router-friendly deployment
+### Развертывание под роутер
 
-- Designed for OpenWrt environments.
-- Install script supports systems with `opkg` and newer images using `apk`.
-- Keeps everything local and manageable from the router panel.
+- Проектирование под окружение OpenWrt.
+- Скрипт установки с поддержкой систем на `opkg` и новых образов с `apk`.
+- Локальное размещение и управление прямо из панели роутера.
 
-## Quick install
+## Быстрая установка
 
-Install directly from GitHub:
+Установка напрямую с GitHub:
 
 ```sh
 wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/main/openwrt/install.sh?v=$(date +%s)" | sh
 ```
 
-After installation, open:
+После установки откройте:
 
 ```text
 LuCI -> Services -> TG Paid Media
 ```
 
-## First launch in 5 minutes
+## Первый запуск за 5 минут
 
-### 1. Install the package
+### 1. Установите пакет
 
-Run the install command above as `root`.
+Запустите команду установки выше от имени `root`.
 
-### 2. Open the LuCI page
+### 2. Откройте страницу LuCI
 
-Go to:
+Перейдите сюда:
 
 ```text
 Services -> TG Paid Media
 ```
 
-### 3. Fill in the bot basics
+### 3. Заполните базовые параметры бота
 
-In settings, set:
+В настройках укажите:
 
 - `Bot token`
 - `Admin IDs`
 - `Bot title`
 - `Welcome text`
-- optional home header image
+- при желании домашнюю шапку с изображением
 
-### 4. Enable and start the service
+### 4. Включите и запустите сервис
 
-Turn the bot on, save the config, and start or restart the service from the status section.
+Включите бота, сохраните конфиг и запустите или перезапустите сервис из блока статуса.
 
-### 5. Add your first paid content
+### 5. Добавьте первый платный контент
 
-Use admin commands in Telegram to build the catalog:
+Используйте админ-команды в Telegram, чтобы собрать каталог:
 
 - `/addphoto <stars> <title>`
 - `/addvideo <stars> <title>`
 - `/items`
 - `/publish <id>`
 
-At this point you already have a working paid media bot with Telegram Stars.
+После этого у вас уже будет рабочий paid media бот с поддержкой Telegram Stars.
 
-## Payments
+## Платежи
 
 ### Telegram Stars
 
-The bot supports Telegram Stars as the native payment method for paid content inside Telegram.
+Бот поддерживает Telegram Stars как нативный способ оплаты платного контента внутри Telegram.
 
 ### Platega
 
-Use `Platega` when you want RUB payments through SBP. The bot tracks order creation, payment status, and recent payment events.
+Используйте `Platega`, если хотите принимать RUB-платежи через СБП. Бот отслеживает создание заказа, статус оплаты и последние платежные события.
 
 ### YooMoney
 
-Use `YooMoney` when you want a direct RUB payment page and webhook-based confirmation.
+Используйте `YooMoney`, если вам нужна прямая RUB-страница оплаты и подтверждение через webhook.
 
-The project already includes:
+В проект уже входят:
 
-- webhook host, port, and path settings
-- callback and success URLs
-- notification secret validation
-- YooMoney mini-check in LuCI
-- optional reverse SSH tunnel for routers behind NAT or without a public incoming port
+- настройки webhook host, port и path
+- `callback URL` и `success URL`
+- проверка `notification secret`
+- мини-проверка YooMoney в LuCI
+- опциональный reverse SSH tunnel для роутеров за NAT или без публичного входящего порта
 
-## LuCI highlights
+## Что дает LuCI
 
-The LuCI page is built to answer the important questions fast:
+Страница LuCI сделана так, чтобы быстро отвечать на главные вопросы:
 
-- Is the bot running right now?
-- Is autostart enabled?
-- How many catalog items and admins are configured?
-- How many Stars, SBP, and YooMoney purchases have happened?
-- What was the last payment event?
-- Why did the service restart?
-- Is YooMoney secret/webhook/reverse tunnel healthy?
+- Бот сейчас запущен или нет?
+- Включен ли автозапуск?
+- Сколько товаров и администраторов настроено?
+- Сколько было покупок через Stars, СБП и YooMoney?
+- Какое последнее платежное событие пришло?
+- Почему сервис перезапускался?
+- В порядке ли `YooMoney secret`, `webhook` и `reverse tunnel`?
 
-This is the part that makes the project feel operational, not just installable.
+Именно эта часть делает проект не просто устанавливаемым, а реально удобным в эксплуатации.
 
-## Bot admin commands
+## Команды администратора
 
-Main admin commands currently available:
+Основные админ-команды, которые уже доступны:
 
 - `/postphoto <stars> <title>`
 - `/postvideo <stars> <title>`
@@ -193,7 +193,7 @@ Main admin commands currently available:
 - `/transactions [count]`
 - `/withdraw`
 
-## Project structure
+## Структура проекта
 
 ```text
 luci-app-tg-paidmedia/
@@ -222,21 +222,21 @@ luci-app-tg-paidmedia/
             `-- yoomoney-tunnel.sh
 ```
 
-## Who this is for
+## Для кого это
 
-- Creators who want to sell private photo or video content in Telegram.
-- OpenWrt users who prefer self-hosted services over third-party dashboards.
-- Router and homelab owners who want payment-aware Telegram automation.
-- People who need a practical way to expose YooMoney webhook handling from a NATed setup.
+- Для авторов, которые хотят продавать приватные фото или видео в Telegram.
+- Для пользователей OpenWrt, которым ближе self-hosted сервисы, чем сторонние панели.
+- Для владельцев роутеров и homelab, которым нужна Telegram-автоматизация с платежами.
+- Для тех, кому нужен практичный способ вывести YooMoney webhook из NATed-окружения.
 
-## Remove
+## Удаление
 
-If you need to fully uninstall the project:
+Если нужно полностью удалить проект:
 
 ```sh
 wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/main/openwrt/uninstall.sh?v=$(date +%s)" | sh
 ```
 
-## License
+## Лицензия
 
 MIT
