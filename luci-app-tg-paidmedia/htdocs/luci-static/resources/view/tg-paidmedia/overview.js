@@ -2760,8 +2760,8 @@ return view.extend({
 					paymentsToggle
 				])
 			]),
-			paymentsHealthTarget,
-			paymentsBody
+			paymentsBody,
+			paymentsHealthTarget
 		]);
 
 		return Promise.all([
