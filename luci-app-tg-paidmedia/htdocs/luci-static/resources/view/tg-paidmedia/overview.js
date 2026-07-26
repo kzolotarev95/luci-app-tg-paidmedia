@@ -1485,12 +1485,12 @@ return view.extend({
 			}
 
 			.tg-paidmedia-inline-guide-yellow {
-				width: min(100%, 42rem);
-				max-width: 42rem;
+				width: min(100%, 34rem);
+				max-width: 34rem;
 				margin-right: auto;
 				border-color: #d6ab2f;
-				background: linear-gradient(180deg, #fff9da 0%, #fff2b8 100%);
-				box-shadow: 0 10px 24px rgba(169, 121, 18, 0.10);
+				background: var(--tg-surface);
+				box-shadow: 0 8px 20px rgba(169, 121, 18, 0.08);
 			}
 
 			.tg-paidmedia-inline-guide-yellow summary {
@@ -1500,16 +1500,7 @@ return view.extend({
 			}
 
 			.tg-paidmedia-inline-guide-yellow .tg-paidmedia-inline-guide-body {
-				background: rgba(255, 252, 232, 0.72);
-			}
-
-			.tg-paidmedia-inline-guide-yellow p,
-			.tg-paidmedia-inline-guide-yellow li {
-				color: #664d03;
-			}
-
-			.tg-paidmedia-inline-guide-yellow code {
-				background: rgba(255, 243, 194, 0.92);
+				background: transparent;
 			}
 
 			.tg-paidmedia-inline-code {
