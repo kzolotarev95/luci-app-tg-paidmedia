@@ -3002,7 +3002,7 @@ class TelegramPaidMediaBot:
             lines.append("Выберите товар ниже.")
 
         if self.catalog["items"]:
-            lines.extend(["", "Медиа и кнопки покупки будут показаны ниже."])
+            lines.extend(["", "Полное медиа откроется только после оплаты."])
 
         if include_admin_hint and self.admin_ids:
             lines.extend(["", "Команды админа: /admin"])
@@ -3157,40 +3157,9 @@ class TelegramPaidMediaBot:
             self.build_catalog_text(include_admin_hint=self.is_admin(user_id)),
         )
         for item in self.catalog["items"]:
-            media_entries = normalize_media_entries(item, item.get("kind", "photo"))
             caption = self.build_catalog_item_caption(item)
             keyboard = self.build_item_purchase_keyboard(item)
-
-            if not media_entries:
-                self.send_message(chat_id, caption, reply_markup=keyboard)
-                continue
-
-            if len(media_entries) == 1:
-                entry = media_entries[0]
-                if entry["type"] == "photo":
-                    self.send_photo(
-                        chat_id,
-                        entry["file_id"],
-                        caption=caption,
-                        reply_markup=keyboard,
-                        has_spoiler=True,
-                    )
-                else:
-                    self.send_video(
-                        chat_id,
-                        entry["file_id"],
-                        caption=caption,
-                        reply_markup=keyboard,
-                        has_spoiler=True,
-                    )
-                continue
-
-            self.send_media_group(chat_id, media_entries, caption=caption, has_spoiler=True)
-            self.send_message(
-                chat_id,
-                "Выберите способ покупки для товара #{0}:".format(item["id"]),
-                reply_markup=keyboard,
-            )
+            self.send_message(chat_id, caption, reply_markup=keyboard)
 
     def send_admin_items(self, chat_id):
         self.send_message(
