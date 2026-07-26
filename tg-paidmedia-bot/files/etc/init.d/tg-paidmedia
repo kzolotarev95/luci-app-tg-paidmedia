@@ -6,6 +6,7 @@ STOP=10
 
 PROG=/usr/bin/python3
 SCRIPT=/usr/libexec/tg-paidmedia/bot.py
+TUNNEL_SCRIPT=/usr/libexec/tg-paidmedia/yoomoney-tunnel.sh
 CONFIG=tg-paidmedia
 SECTION=main
 
@@ -21,6 +22,10 @@ start_service() {
 	local yoomoney_enabled yoomoney_wallet yoomoney_notification_secret
 	local yoomoney_callback_url yoomoney_success_url yoomoney_webhook_host
 	local yoomoney_webhook_port yoomoney_webhook_path yoomoney_payment_path
+	local yoomoney_tunnel_enabled yoomoney_tunnel_host yoomoney_tunnel_port
+	local yoomoney_tunnel_user yoomoney_tunnel_remote_port
+	local yoomoney_tunnel_local_host yoomoney_tunnel_local_port
+	local yoomoney_tunnel_private_key yoomoney_tunnel_accept_hostkey
 
 	config_load "$CONFIG"
 	config_get_bool enabled "$SECTION" enabled 0
@@ -63,6 +68,15 @@ start_service() {
 	config_get yoomoney_webhook_port "$SECTION" yoomoney_webhook_port "8100"
 	config_get yoomoney_webhook_path "$SECTION" yoomoney_webhook_path "/yoomoney/webhook"
 	config_get yoomoney_payment_path "$SECTION" yoomoney_payment_path "/yoomoney/pay"
+	config_get_bool yoomoney_tunnel_enabled "$SECTION" yoomoney_tunnel_enabled 0
+	config_get yoomoney_tunnel_host "$SECTION" yoomoney_tunnel_host ""
+	config_get yoomoney_tunnel_port "$SECTION" yoomoney_tunnel_port "22"
+	config_get yoomoney_tunnel_user "$SECTION" yoomoney_tunnel_user "root"
+	config_get yoomoney_tunnel_remote_port "$SECTION" yoomoney_tunnel_remote_port "18101"
+	config_get yoomoney_tunnel_local_host "$SECTION" yoomoney_tunnel_local_host "127.0.0.1"
+	config_get yoomoney_tunnel_local_port "$SECTION" yoomoney_tunnel_local_port "$yoomoney_webhook_port"
+	config_get yoomoney_tunnel_private_key "$SECTION" yoomoney_tunnel_private_key "/root/.ssh/id_ed25519"
+	config_get_bool yoomoney_tunnel_accept_hostkey "$SECTION" yoomoney_tunnel_accept_hostkey 1
 	TG_ADMIN_IDS=""
 	config_list_foreach "$SECTION" admin_ids append_admin_id
 
@@ -103,10 +117,36 @@ start_service() {
 	procd_append_param env TG_YOOMONEY_WEBHOOK_PORT="$yoomoney_webhook_port"
 	procd_append_param env TG_YOOMONEY_WEBHOOK_PATH="$yoomoney_webhook_path"
 	procd_append_param env TG_YOOMONEY_PAYMENT_PATH="$yoomoney_payment_path"
+	procd_append_param env TG_YOOMONEY_TUNNEL_ENABLED="$yoomoney_tunnel_enabled"
+	procd_append_param env TG_YOOMONEY_TUNNEL_HOST="$yoomoney_tunnel_host"
+	procd_append_param env TG_YOOMONEY_TUNNEL_PORT="$yoomoney_tunnel_port"
+	procd_append_param env TG_YOOMONEY_TUNNEL_USER="$yoomoney_tunnel_user"
+	procd_append_param env TG_YOOMONEY_TUNNEL_REMOTE_PORT="$yoomoney_tunnel_remote_port"
+	procd_append_param env TG_YOOMONEY_TUNNEL_LOCAL_HOST="$yoomoney_tunnel_local_host"
+	procd_append_param env TG_YOOMONEY_TUNNEL_LOCAL_PORT="$yoomoney_tunnel_local_port"
+	procd_append_param env TG_YOOMONEY_TUNNEL_PRIVATE_KEY="$yoomoney_tunnel_private_key"
+	procd_append_param env TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY="$yoomoney_tunnel_accept_hostkey"
 	procd_set_param respawn 3600 5 5
 	procd_set_param stdout 1
 	procd_set_param stderr 1
 	procd_close_instance
+
+	if [ "$yoomoney_tunnel_enabled" -eq 1 ]; then
+		procd_open_instance yoomoney-tunnel
+		procd_set_param command /bin/sh "$TUNNEL_SCRIPT"
+		procd_set_param env TG_YOOMONEY_TUNNEL_HOST="$yoomoney_tunnel_host"
+		procd_append_param env TG_YOOMONEY_TUNNEL_PORT="$yoomoney_tunnel_port"
+		procd_append_param env TG_YOOMONEY_TUNNEL_USER="$yoomoney_tunnel_user"
+		procd_append_param env TG_YOOMONEY_TUNNEL_REMOTE_PORT="$yoomoney_tunnel_remote_port"
+		procd_append_param env TG_YOOMONEY_TUNNEL_LOCAL_HOST="$yoomoney_tunnel_local_host"
+		procd_append_param env TG_YOOMONEY_TUNNEL_LOCAL_PORT="$yoomoney_tunnel_local_port"
+		procd_append_param env TG_YOOMONEY_TUNNEL_PRIVATE_KEY="$yoomoney_tunnel_private_key"
+		procd_append_param env TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY="$yoomoney_tunnel_accept_hostkey"
+		procd_set_param respawn 3600 5 5
+		procd_set_param stdout 1
+		procd_set_param stderr 1
+		procd_close_instance
+	fi
 }
 
 append_admin_id() {

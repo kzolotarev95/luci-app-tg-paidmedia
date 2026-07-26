@@ -98,6 +98,7 @@ main() {
 
 	rm -f "$TRACK_FILE"
 	rm -f /usr/libexec/tg-paidmedia/bot.py
+	rm -f /usr/libexec/tg-paidmedia/yoomoney-tunnel.sh
 	rmdir /usr/libexec/tg-paidmedia >/dev/null 2>&1 || true
 
 	rm -rf /var/lib/tg-paidmedia

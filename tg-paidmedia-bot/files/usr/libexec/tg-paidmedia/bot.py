@@ -409,6 +409,28 @@ class TelegramPaidMediaBot:
         )
         if not self.yoomoney_payment_path.startswith("/"):
             self.yoomoney_payment_path = "/" + self.yoomoney_payment_path
+        self.yoomoney_tunnel_enabled = env_bool("TG_YOOMONEY_TUNNEL_ENABLED", False)
+        self.yoomoney_tunnel_host = os.environ.get("TG_YOOMONEY_TUNNEL_HOST", "").strip()
+        self.yoomoney_tunnel_port = env_int("TG_YOOMONEY_TUNNEL_PORT", 22)
+        self.yoomoney_tunnel_user = (
+            os.environ.get("TG_YOOMONEY_TUNNEL_USER", "root").strip() or "root"
+        )
+        self.yoomoney_tunnel_remote_port = env_int(
+            "TG_YOOMONEY_TUNNEL_REMOTE_PORT", 18101
+        )
+        self.yoomoney_tunnel_local_host = (
+            os.environ.get("TG_YOOMONEY_TUNNEL_LOCAL_HOST", "127.0.0.1").strip()
+            or "127.0.0.1"
+        )
+        self.yoomoney_tunnel_local_port = env_int(
+            "TG_YOOMONEY_TUNNEL_LOCAL_PORT", self.yoomoney_webhook_port
+        )
+        self.yoomoney_tunnel_private_key = os.environ.get(
+            "TG_YOOMONEY_TUNNEL_PRIVATE_KEY", "/root/.ssh/id_ed25519"
+        ).strip()
+        self.yoomoney_tunnel_accept_hostkey = env_bool(
+            "TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY", True
+        )
         self._yoomoney_server = None
         self._yoomoney_server_thread = None
         self._orders_lock = threading.Lock()
@@ -458,6 +480,7 @@ class TelegramPaidMediaBot:
         self.state.setdefault("last_platega_event", {})
         self.state.setdefault("last_yoomoney_order", {})
         self.state.setdefault("last_yoomoney_event", {})
+        self.state.setdefault("last_yoomoney_secret_check", {})
         self.orders = load_json(self.orders_path, {"next_id": 1, "items": []})
         self.orders.setdefault("next_id", 1)
         self.orders.setdefault("items", [])
@@ -485,6 +508,7 @@ class TelegramPaidMediaBot:
             "platega_webhook_url": self.platega_callback_url,
             "yoomoney_enabled": self.has_yoomoney_credentials(),
             "yoomoney_webhook_url": self.yoomoney_callback_url,
+            "yoomoney_health": self.build_yoomoney_health(),
             "stats": self.state.get("stats", {}),
         }
 
@@ -627,6 +651,7 @@ class TelegramPaidMediaBot:
         self.status["platega_webhook_url"] = self.platega_callback_url
         self.status["yoomoney_enabled"] = self.has_yoomoney_credentials()
         self.status["yoomoney_webhook_url"] = self.yoomoney_callback_url
+        self.status["yoomoney_health"] = self.build_yoomoney_health()
         atomic_write_json(self.status_path, self.status)
 
     def update_status(self, **kwargs):
@@ -741,6 +766,78 @@ class TelegramPaidMediaBot:
             and bool(self.yoomoney_notification_secret)
             and bool(self.yoomoney_callback_url)
         )
+
+    def yoomoney_missing_fields(self):
+        missing = []
+
+        if not self.yoomoney_wallet:
+            missing.append("wallet")
+        if not self.yoomoney_notification_secret:
+            missing.append("notification secret")
+        if not self.yoomoney_callback_url:
+            missing.append("callback URL")
+
+        return missing
+
+    def build_yoomoney_tunnel_target(self):
+        if not self.yoomoney_tunnel_host:
+            return ""
+
+        return "{0}@{1}:{2} -> {3}:{4}".format(
+            self.yoomoney_tunnel_user,
+            self.yoomoney_tunnel_host,
+            self.yoomoney_tunnel_remote_port,
+            self.yoomoney_tunnel_local_host,
+            self.yoomoney_tunnel_local_port,
+        )
+
+    def build_yoomoney_health(self):
+        callback = urllib.parse.urlparse(self.yoomoney_callback_url or "")
+        secret_check = self.state.get("last_yoomoney_secret_check", {})
+        tunnel_target = self.build_yoomoney_tunnel_target()
+        missing = self.yoomoney_missing_fields()
+        warnings = []
+
+        if self.yoomoney_enabled and missing:
+            warnings.append("Missing: " + ", ".join(missing))
+        if self.yoomoney_callback_url and (
+            callback.scheme.lower() != "https" or not callback.netloc
+        ):
+            warnings.append("Callback URL should be public HTTPS")
+        if self.yoomoney_tunnel_enabled and not (
+            self.yoomoney_tunnel_host
+            and self.yoomoney_tunnel_user
+            and self.yoomoney_tunnel_remote_port > 0
+            and self.yoomoney_tunnel_local_port > 0
+        ):
+            warnings.append("Reverse tunnel is enabled but incomplete")
+
+        return {
+            "enabled": bool(self.yoomoney_enabled),
+            "credentials_ready": self.has_yoomoney_credentials(),
+            "wallet_configured": bool(self.yoomoney_wallet),
+            "secret_configured": bool(self.yoomoney_notification_secret),
+            "callback_url": self.yoomoney_callback_url,
+            "callback_https": bool(
+                self.yoomoney_callback_url
+                and callback.scheme.lower() == "https"
+                and callback.netloc
+            ),
+            "webhook_listening": self._yoomoney_server is not None,
+            "webhook_bind": "{0}:{1}{2}".format(
+                self.yoomoney_webhook_host,
+                self.yoomoney_webhook_port,
+                self.yoomoney_webhook_path,
+            ),
+            "payment_page_path": self.yoomoney_payment_path,
+            "last_secret_check": secret_check,
+            "tunnel_enabled": bool(self.yoomoney_tunnel_enabled),
+            "tunnel_configured": bool(tunnel_target),
+            "tunnel_target": tunnel_target,
+            "tunnel_private_key": self.yoomoney_tunnel_private_key,
+            "tunnel_accept_hostkey": bool(self.yoomoney_tunnel_accept_hostkey),
+            "warnings": warnings,
+        }
 
     def platega_headers(self):
         return {
@@ -869,8 +966,10 @@ class TelegramPaidMediaBot:
 
     def validate_yoomoney_notification(self, payload):
         signature = str(payload.get("sign") or "").strip().lower()
-        if not signature or not self.yoomoney_notification_secret:
-            return False
+        if not signature:
+            return False, "missing sign parameter"
+        if not self.yoomoney_notification_secret:
+            return False, "notification secret is empty"
 
         prepared = []
         for key in sorted(payload.keys()):
@@ -889,7 +988,16 @@ class TelegramPaidMediaBot:
             raw_message,
             hashlib.sha256,
         ).hexdigest()
-        return hmac.compare_digest(expected, signature)
+        if hmac.compare_digest(expected, signature):
+            return True, "signature matched"
+
+        return (
+            False,
+            "sign mismatch (got {0}, expected {1})".format(
+                signature[:12],
+                expected[:12],
+            ),
+        )
 
     def item_rub_price(self, item):
         try:
@@ -1150,6 +1258,18 @@ class TelegramPaidMediaBot:
         self.save_state()
         self.update_status(last_yoomoney_event=self.state["last_yoomoney_event"])
 
+    def record_yoomoney_secret_check(self, ok, reason, payload=None):
+        payload = payload or {}
+        self.state["last_yoomoney_secret_check"] = {
+            "ok": bool(ok),
+            "reason": str(reason or "").strip(),
+            "checked_at": utc_now(),
+            "label": str(payload.get("label") or "").strip(),
+            "operation_id": str(payload.get("operation_id") or "").strip(),
+        }
+        self.save_state()
+        self.update_status(yoomoney_health=self.build_yoomoney_health())
+
     def add_rub_revenue(self, amount_rub):
         try:
             amount = int(amount_rub or 0)
@@ -1398,18 +1518,40 @@ class TelegramPaidMediaBot:
         if not self.has_yoomoney_credentials():
             return 503, {"ok": False, "error": "yoomoney disabled"}
 
-        if not self.validate_yoomoney_notification(payload):
-            LOG.warning("Rejected YooMoney webhook because signature validation failed")
+        payment_label = str(payload.get("label") or "").strip()
+        operation_id = str(payload.get("operation_id") or "").strip()
+        is_valid, validation_note = self.validate_yoomoney_notification(payload)
+        self.record_yoomoney_secret_check(is_valid, validation_note, payload)
+
+        if not is_valid:
+            LOG.warning(
+                "Rejected YooMoney webhook for label=%s operation_id=%s: %s",
+                payment_label or "-",
+                operation_id or "-",
+                validation_note,
+            )
+            self.record_yoomoney_event(
+                source="webhook",
+                status="REJECTED",
+                transaction_id=operation_id,
+                label=payment_label,
+                received_at=utc_now(),
+                warning=validation_note,
+            )
             return 403, {"ok": False, "error": "forbidden"}
 
-        payment_label = str(payload.get("label") or "").strip()
+        LOG.info(
+            "Accepted YooMoney webhook for label=%s operation_id=%s",
+            payment_label or "-",
+            operation_id or "-",
+        )
         order = self.find_order_by_label(payment_label)
 
         if order is None:
             self.record_yoomoney_event(
                 source="webhook",
                 status="UNKNOWN",
-                transaction_id=str(payload.get("operation_id") or ""),
+                transaction_id=operation_id,
                 label=payment_label,
                 received_at=utc_now(),
                 warning="order not found",
@@ -1422,7 +1564,6 @@ class TelegramPaidMediaBot:
             charged_amount = 0.0
 
         expected_amount = round(float(order.get("amount_rub") or 0), 2)
-        operation_id = str(payload.get("operation_id") or "").strip()
 
         self.record_yoomoney_event(
             source="webhook",
@@ -1682,6 +1823,19 @@ class TelegramPaidMediaBot:
         self.me = self.api_call("getMe")
         LOG.info("Setup step: setMyCommands")
         self.set_my_commands()
+        if self.yoomoney_enabled:
+            yoomoney_health = self.build_yoomoney_health()
+            if yoomoney_health["warnings"]:
+                LOG.warning(
+                    "YooMoney readiness warnings: %s",
+                    "; ".join(yoomoney_health["warnings"]),
+                )
+            else:
+                LOG.info(
+                    "YooMoney is ready: webhook=%s tunnel=%s",
+                    yoomoney_health.get("webhook_bind", "-"),
+                    yoomoney_health.get("tunnel_target", "disabled") or "disabled",
+                )
         self.start_platega_webhook_server()
         self.start_yoomoney_webhook_server()
 

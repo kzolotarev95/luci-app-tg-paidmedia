@@ -394,6 +394,7 @@ main() {
 
 	install_file "$REPO_ROOT/tg-paidmedia-bot/files/etc/init.d/tg-paidmedia" "/etc/init.d/tg-paidmedia" "0755"
 	install_file "$REPO_ROOT/tg-paidmedia-bot/files/usr/libexec/tg-paidmedia/bot.py" "/usr/libexec/tg-paidmedia/bot.py" "0755"
+	install_file "$REPO_ROOT/tg-paidmedia-bot/files/usr/libexec/tg-paidmedia/yoomoney-tunnel.sh" "/usr/libexec/tg-paidmedia/yoomoney-tunnel.sh" "0755"
 	install_file "$REPO_ROOT/luci-app-tg-paidmedia/root/usr/share/luci/menu.d/luci-app-tg-paidmedia.json" "/usr/share/luci/menu.d/luci-app-tg-paidmedia.json" "0644"
 	install_file "$REPO_ROOT/luci-app-tg-paidmedia/root/usr/share/rpcd/acl.d/luci-app-tg-paidmedia.json" "/usr/share/rpcd/acl.d/luci-app-tg-paidmedia.json" "0644"
 	install_file "$REPO_ROOT/luci-app-tg-paidmedia/htdocs/luci-static/resources/view/tg-paidmedia/overview.js" "/www/luci-static/resources/view/tg-paidmedia/overview.js" "0644"

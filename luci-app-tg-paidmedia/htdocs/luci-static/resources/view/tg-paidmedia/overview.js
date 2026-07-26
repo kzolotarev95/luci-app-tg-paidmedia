@@ -124,6 +124,43 @@ PAYMENT_FIELD_HELP.yoomoney_payment_path = {
 	text: 'Локальный путь промежуточной страницы оплаты. Покупатель открывает ее, затем выбирает оплату кошельком ЮMoney или картой.'
 };
 
+PAYMENT_FIELD_HELP.yoomoney_tunnel_enabled = {
+	title: '\u0410\u0432\u0442\u043E reverse tunnel \u042eMoney',
+	text: '\u0415\u0441\u043B\u0438 \u0432\u043A\u043B\u044E\u0447\u0438\u0442\u044C \u044D\u0442\u0443 \u043E\u043F\u0446\u0438\u044E, tg-paidmedia \u0441\u0430\u043C \u0431\u0443\u0434\u0435\u0442 \u0434\u0435\u0440\u0436\u0430\u0442\u044C reverse SSH tunnel \u0447\u0435\u0440\u0435\u0437 procd. \u0422\u0435\u0440\u043C\u0438\u043D\u0430\u043B \u043C\u043E\u0436\u043D\u043E \u0437\u0430\u043A\u0440\u044B\u0442\u044C.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_host = {
+	title: '\u0425\u043E\u0441\u0442 VPS \u0434\u043B\u044F tunnel',
+	text: '\u041F\u0443\u0431\u043B\u0438\u0447\u043D\u044B\u0439 IP \u0438\u043B\u0438 \u0434\u043E\u043C\u0435\u043D VPS, \u043A\u0443\u0434\u0430 \u0440\u043E\u0443\u0442\u0435\u0440 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0435\u0442 reverse SSH tunnel.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_port = {
+	title: 'SSH \u043F\u043E\u0440\u0442 VPS',
+	text: '\u041E\u0431\u044B\u0447\u043D\u043E 22. \u041C\u0435\u043D\u044F\u0439\u0442\u0435, \u0435\u0441\u043B\u0438 \u043D\u0430 VPS SSH \u0441\u043B\u0443\u0448\u0430\u0435\u0442 \u043D\u0435 \u043D\u0430 22.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_user = {
+	title: 'SSH \u043B\u043E\u0433\u0438\u043D VPS',
+	text: '\u041F\u043E\u0434 \u043A\u0430\u043A\u0438\u043C \u043B\u043E\u0433\u0438\u043D\u043E\u043C \u0440\u043E\u0443\u0442\u0435\u0440 \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0435\u0442 tunnel \u043D\u0430 VPS.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_remote_port = {
+	title: '\u0423\u0434\u0430\u043B\u0451\u043D\u043D\u044B\u0439 \u043F\u043E\u0440\u0442 tunnel',
+	text: '\u042D\u0442\u043E \u043F\u043E\u0440\u0442 \u043D\u0430 VPS, \u043A\u0443\u0434\u0430 nginx \u0438\u043B\u0438 proxy \u0431\u0443\u0434\u0435\u0442 \u043F\u0440\u043E\u043A\u0438\u0434\u044B\u0432\u0430\u0442\u044C webhook \u042eMoney.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_local_host = {
+	title: '\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u0445\u043E\u0441\u0442 tunnel',
+	text: '\u041E\u0431\u044B\u0447\u043D\u043E 127.0.0.1. \u042D\u0442\u043E \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 host \u043D\u0430 \u0440\u043E\u0443\u0442\u0435\u0440\u0435, \u043A\u0443\u0434\u0430 tunnel \u043E\u0442\u0434\u0430\u0451\u0442 webhook.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_local_port = {
+	title: '\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043F\u043E\u0440\u0442 tunnel',
+	text: '\u041E\u0431\u044B\u0447\u043D\u043E \u0442\u043E\u0442 \u0436\u0435 \u043F\u043E\u0440\u0442, \u0447\u0442\u043E \u0438 webhook \u042eMoney, \u043D\u0430\u043F\u0440\u0438\u043C\u0435\u0440 8100.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_private_key = {
+	title: '\u041A\u043B\u044E\u0447 SSH \u0434\u043B\u044F tunnel',
+	text: '\u041F\u0443\u0442\u044C \u043A private key \u043D\u0430 \u0440\u043E\u0443\u0442\u0435\u0440\u0435. \u041D\u0443\u0436\u0435\u043D \u0432\u0445\u043E\u0434 \u043D\u0430 VPS \u0431\u0435\u0437 \u043F\u0430\u0440\u043E\u043B\u044F.'
+};
+PAYMENT_FIELD_HELP.yoomoney_tunnel_accept_hostkey = {
+	title: '\u0410\u0432\u0442\u043E-\u043F\u0440\u0438\u0451\u043C host key',
+	text: '\u041D\u0443\u0436\u043D\u043E \u0434\u043B\u044F \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u0441\u0442\u0430\u0440\u0442\u0430, \u0447\u0442\u043E\u0431\u044B tunnel \u043D\u0435 \u0436\u0434\u0430\u043B \u0440\u0443\u0447\u043D\u043E\u0433\u043E \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F host key.'
+};
+
 function parseJSON(text, fallback) {
 	try {
 		return JSON.parse(text || '');
@@ -2039,6 +2076,43 @@ return view.extend({
 		o.rmempty = true;
 		o.placeholder = '/yoomoney/pay';
 
+		o = s.option(form.Flag, 'yoomoney_tunnel_enabled', '\u0410\u0432\u0442\u043E reverse tunnel \u042eMoney');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'yoomoney_tunnel_host', '\u0425\u043E\u0441\u0442 VPS \u0434\u043B\u044F tunnel');
+		o.rmempty = true;
+		o.placeholder = '45.9.73.74';
+
+		o = s.option(form.Value, 'yoomoney_tunnel_port', 'SSH \u043F\u043E\u0440\u0442 VPS');
+		o.datatype = 'port';
+		o.rmempty = true;
+		o.placeholder = '22';
+
+		o = s.option(form.Value, 'yoomoney_tunnel_user', 'SSH \u043B\u043E\u0433\u0438\u043D VPS');
+		o.rmempty = true;
+		o.placeholder = 'root';
+
+		o = s.option(form.Value, 'yoomoney_tunnel_remote_port', '\u0423\u0434\u0430\u043B\u0451\u043D\u043D\u044B\u0439 \u043F\u043E\u0440\u0442 tunnel');
+		o.datatype = 'port';
+		o.rmempty = true;
+		o.placeholder = '18101';
+
+		o = s.option(form.Value, 'yoomoney_tunnel_local_host', '\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u0445\u043E\u0441\u0442 tunnel');
+		o.rmempty = true;
+		o.placeholder = '127.0.0.1';
+
+		o = s.option(form.Value, 'yoomoney_tunnel_local_port', '\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043F\u043E\u0440\u0442 tunnel');
+		o.datatype = 'port';
+		o.rmempty = true;
+		o.placeholder = '8100';
+
+		o = s.option(form.Value, 'yoomoney_tunnel_private_key', '\u041A\u043B\u044E\u0447 SSH \u0434\u043B\u044F tunnel');
+		o.rmempty = true;
+		o.placeholder = '/root/.ssh/id_ed25519';
+
+		o = s.option(form.Flag, 'yoomoney_tunnel_accept_hostkey', '\u0410\u0432\u0442\u043E-\u043F\u0440\u0438\u0451\u043C host key');
+		o.rmempty = false;
+
 		return m.render();
 	},
 
@@ -2123,17 +2197,116 @@ return view.extend({
 		});
 	},
 
-	extractServiceRunning: function(serviceStatus) {
+	extractServiceInstance: function(serviceStatus, preferredName) {
 		var root = serviceStatus['tg-paidmedia'] || serviceStatus || {};
 		var instances = root.instances || {};
-		var instanceName = Object.keys(instances)[0];
+		var instanceNames = Object.keys(instances);
+		var instanceName = preferredName && instances[preferredName] ? preferredName : null;
+		var i;
+
+		if (!instanceName) {
+			for (i = 0; i < instanceNames.length; i++) {
+				if (instanceNames[i] !== 'yoomoney-tunnel') {
+					instanceName = instanceNames[i];
+					break;
+				}
+			}
+		}
+
+		if (!instanceName)
+			instanceName = instanceNames[0];
+
 		var instance = instanceName ? instances[instanceName] : {};
 
 		return {
+			name: instanceName || '',
 			instance: instance,
 			running: !!(instance && instance.running),
 			pid: instance && instance.pid ? instance.pid : ''
 		};
+	},
+
+	extractServiceRunning: function(serviceStatus) {
+		return this.extractServiceInstance(serviceStatus);
+	},
+
+	buildStateBadge: function(isOk, okText, badText) {
+		return E('span', {
+			'class': 'tg-paidmedia-badge ' + (isOk ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped')
+		}, [ isOk ? okText : badText ]);
+	},
+
+	formatYooMoneySecretCheck: function(secretCheck) {
+		var reason = String((secretCheck || {}).reason || '').trim();
+		var checkedAt = String((secretCheck || {}).checked_at || '').trim();
+
+		if (!checkedAt)
+			return '-';
+
+		return checkedAt + (reason ? ' / ' + reason : '');
+	},
+
+	buildYooMoneyHealthSection: function(data) {
+		var serviceStatus = data[1] || {};
+		var botStatus = parseJSON((data[2] || {}).stdout, {});
+		var health = botStatus.yoomoney_health || {};
+		var secretCheck = health.last_secret_check || {};
+		var tunnelMeta = this.extractServiceInstance(serviceStatus, 'yoomoney-tunnel');
+		var cards = [
+			{
+				label: '\u0421\u0435\u043A\u0440\u0435\u0442 \u042eMoney',
+				value: this.buildStateBadge(!!secretCheck.ok, '\u041F\u0440\u043E\u0448\u0451\u043B', secretCheck.checked_at ? '\u041E\u0448\u0438\u0431\u043A\u0430' : '\u0415\u0449\u0451 \u043D\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u044F\u043B\u0441\u044F')
+			},
+			{
+				label: 'Webhook \u042eMoney',
+				value: this.buildStateBadge(!!health.webhook_listening, '\u0421\u043B\u0443\u0448\u0430\u0435\u0442', '\u041D\u0435 \u0441\u043B\u0443\u0448\u0430\u0435\u0442')
+			},
+			{
+				label: 'HTTPS callback',
+				value: this.buildStateBadge(!!health.callback_https, '\u041E\u041A', '\u041F\u0440\u043E\u0432\u0435\u0440\u044C URL')
+			},
+			{
+				label: 'Reverse tunnel',
+				value: this.buildStateBadge(!!tunnelMeta.running, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', health.tunnel_enabled ? '\u041D\u0435 \u043F\u043E\u0434\u043D\u044F\u043B\u0441\u044F' : '\u0412\u044B\u043A\u043B\u044E\u0447\u0435\u043D')
+			},
+			{
+				label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 sign',
+				value: this.formatYooMoneySecretCheck(secretCheck),
+				subtle: true
+			},
+			{
+				label: 'Tunnel target',
+				value: String(health.tunnel_target || '-'),
+				subtle: true
+			},
+			{
+				label: 'Webhook bind',
+				value: String(health.webhook_bind || '-'),
+				subtle: true
+			},
+			{
+				label: '\u041F\u0440\u0435\u0434\u0443\u043F\u0440\u0435\u0436\u0434\u0435\u043D\u0438\u044F',
+				value: health.warnings && health.warnings.length ? health.warnings.join(' | ') : '\u041D\u0435\u0442',
+				subtle: true
+			}
+		];
+
+		return E('div', { 'class': 'tg-paidmedia-payments-health' }, [
+			E('div', { 'class': 'tg-paidmedia-section-head' }, [
+				E('div', {}, [
+					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u041C\u0438\u043D\u0438-\u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u042eMoney' ]),
+					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u0421\u044E\u0434\u0430 \u0441\u0440\u0430\u0437\u0443 \u043F\u0430\u0434\u0430\u0435\u0442 \u0441\u0442\u0430\u0442\u0443\u0441 \u0441\u0435\u043A\u0440\u0435\u0442\u0430, webhook \u0438 reverse tunnel \u0431\u0435\u0437 \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430 \u0432\u0441\u0435\u0433\u043E logread.' ])
+				])
+			]),
+			E('div', { 'class': 'tg-paidmedia-grid' }, cards.map(function(card) {
+				return E('div', { 'class': 'tg-paidmedia-card' }, [
+					E('p', { 'class': 'tg-paidmedia-card-label' }, [ card.label ]),
+					E('p', {
+						'class': 'tg-paidmedia-card-value' + (card.subtle ? ' tg-paidmedia-card-subtle' : '')
+					}, [ card.value ])
+				]);
+			}))
+		]);
 	},
 
 	buildHeaderStatus: function(data) {
@@ -2145,7 +2318,7 @@ return view.extend({
 		}, [ serviceMeta.running ? '\u0420\u0430\u0431\u043e\u0442\u0430\u0435\u0442' : '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d' ]);
 	},
 
-	buildStatusSection: function(data, statusTarget, logTarget, headerStatusTarget) {
+	buildStatusSection: function(data, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) {
 		var initList = data[0] || {};
 		var serviceStatus = data[1] || {};
 		var botStatus = parseJSON((data[2] || {}).stdout, {});
@@ -2201,19 +2374,19 @@ return view.extend({
 			E('button', {
 				'class': 'btn cbi-button tg-paidmedia-action-btn tg-paidmedia-btn-start',
 				'click': ui.createHandlerFn(this, function() {
-					return this.handleServiceAction('start', statusTarget, logTarget, headerStatusTarget);
+					return this.handleServiceAction('start', statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget);
 				})
 			}, [ '\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c' ]),
 			E('button', {
 				'class': 'btn cbi-button tg-paidmedia-action-btn tg-paidmedia-btn-restart',
 				'click': ui.createHandlerFn(this, function() {
-					return this.handleServiceAction('restart', statusTarget, logTarget, headerStatusTarget);
+					return this.handleServiceAction('restart', statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget);
 				})
 			}, [ '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c' ]),
 			E('button', {
 				'class': 'btn cbi-button tg-paidmedia-action-btn tg-paidmedia-btn-stop',
 				'click': ui.createHandlerFn(this, function() {
-					return this.handleServiceAction('stop', statusTarget, logTarget, headerStatusTarget);
+					return this.handleServiceAction('stop', statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget);
 				})
 			}, [ '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c' ])
 		]);
@@ -2242,13 +2415,15 @@ return view.extend({
 		]);
 	},
 
-	updatePanels: function(statusTarget, logTarget, headerStatusTarget, data) {
+	updatePanels: function(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data) {
 		var filteredLogText;
 		var shouldStickToBottom;
 
-		dom.content(statusTarget, this.buildStatusSection(data, statusTarget, logTarget, headerStatusTarget));
+		dom.content(statusTarget, this.buildStatusSection(data, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget));
 		if (headerStatusTarget)
 			dom.content(headerStatusTarget, [ this.buildHeaderStatus(data) ]);
+		if (paymentsHealthTarget)
+			dom.content(paymentsHealthTarget, [ this.buildYooMoneyHealthSection(data) ]);
 
 		filteredLogText = filterBotLogText((data[3] || {}).stdout || '', 200);
 		shouldStickToBottom = this.shouldAutoScrollLog(logTarget);
@@ -2422,7 +2597,7 @@ return view.extend({
 		});
 	},
 
-	clearLogs: function(statusTarget, logTarget, headerStatusTarget) {
+	clearLogs: function(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) {
 		ui.showModal('\u041e\u0447\u0438\u0441\u0442\u043a\u0430 \u0436\u0443\u0440\u043d\u0430', [
 			E('p', {}, [ '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430\u044e \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0439 log-\u0434\u0435\u043c\u043e\u043d, \u0447\u0442\u043e\u0431\u044b \u043e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 ring buffer...' ])
 		]);
@@ -2436,7 +2611,7 @@ return view.extend({
 			return this.load();
 		}.bind(this)).then(function(data) {
 			ui.hideModal();
-			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data);
 			ui.addNotification(null, E('p', {}, [ '\u0416\u0443\u0440\u043d\u0430\u043b \u043e\u0447\u0438\u0449\u0435\u043d. \u0422\u0435\u043f\u0435\u0440\u044c \u0432 \u0431\u043B\u043E\u043A\u0435 \u0432\u0438\u0434\u0435\u043D \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0432\u0435\u0436\u0438\u0439 \u0445\u0432\u043E\u0441\u0442 \u043F\u043E\u0441\u043B\u0435 \u043F\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043A\u0430 logd.' ]), 'info');
 		}.bind(this)).catch(function(err) {
 			ui.hideModal();
@@ -2444,13 +2619,13 @@ return view.extend({
 		});
 	},
 
-	pollPanels: function(statusTarget, logTarget, headerStatusTarget) {
+	pollPanels: function(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) {
 		return this.load().then(function(data) {
-			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data);
 		}.bind(this));
 	},
 
-	handleServiceAction: function(action, statusTarget, logTarget, headerStatusTarget) {
+	handleServiceAction: function(action, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) {
 		var actionLabel = {
 			start: '\u0437\u0430\u043f\u0443\u0441\u043a\u0430',
 			restart: '\u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430',
@@ -2472,7 +2647,7 @@ return view.extend({
 			var serviceMeta = this.extractServiceRunning(serviceStatus);
 			var failureReason = String(botStatus.last_exception || botStatus.last_error || '').trim();
 
-			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data);
 
 			if (action === 'stop' && serviceMeta.running) {
 				throw new Error('\u0421\u0435\u0440\u0432\u0438\u0441 \u043f\u043e\u043a\u0430 \u0435\u0449\u0435 \u043d\u0435 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u043b\u0441\u044f. \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0447\u0435\u0440\u0435\u0437 \u043f\u0430\u0440\u0443 \u0441\u0435\u043a\u0443\u043d\u0434.');
@@ -2554,9 +2729,10 @@ return view.extend({
 		var logClear = E('button', {
 			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-log-clear',
 			'click': ui.createHandlerFn(this, function() {
-				return this.clearLogs(statusTarget, logTarget, headerStatusTarget);
+				return this.clearLogs(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget);
 			})
 		}, [ '\uD83E\uDDF9 \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u043B\u043E\u0433\u0438' ]);
+		var paymentsHealthTarget = E('div', { 'class': 'tg-paidmedia-payments-health-host' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u042eMoney...' ]);
 		var logSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-log-panel is-collapsed' }, [
 			E('div', { 'class': 'tg-paidmedia-section-head' }, [
 				E('div', {}, [
@@ -2584,6 +2760,7 @@ return view.extend({
 					paymentsToggle
 				])
 			]),
+			paymentsHealthTarget,
 			paymentsBody
 		]);
 
@@ -2594,8 +2771,8 @@ return view.extend({
 			var botFormNode = renderedForms[0];
 			var paymentsFormNode = renderedForms[1];
 
-			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
-			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget, headerStatusTarget));
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data);
+			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget));
 			dom.content(settingsBody, [ botFormNode ]);
 			dom.content(paymentsBody, [ paymentsFormNode ]);
 			this.decoratePaymentTooltips(paymentsBody);

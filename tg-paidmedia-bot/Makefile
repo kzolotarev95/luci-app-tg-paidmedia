@@ -39,6 +39,7 @@ define Package/tg-paidmedia-bot/install
 
 	$(INSTALL_DIR) $(1)/usr/libexec/tg-paidmedia
 	$(INSTALL_BIN) ./files/usr/libexec/tg-paidmedia/bot.py $(1)/usr/libexec/tg-paidmedia/bot.py
+	$(INSTALL_BIN) ./files/usr/libexec/tg-paidmedia/yoomoney-tunnel.sh $(1)/usr/libexec/tg-paidmedia/yoomoney-tunnel.sh
 endef
 
 $(eval $(call BuildPackage,tg-paidmedia-bot))
