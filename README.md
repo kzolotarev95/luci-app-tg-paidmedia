@@ -171,27 +171,6 @@ Services -> TG Paid Media
 
 Именно эта часть делает проект не просто устанавливаемым, а реально удобным в эксплуатации.
 
-## Команды администратора
-
-Основные админ-команды, которые уже доступны:
-
-- `/postphoto <stars> <title>`
-- `/postvideo <stars> <title>`
-- `/addphoto <stars> <title>`
-- `/addvideo <stars> <title>`
-- `/items`
-- `/publish <id>`
-- `/setprice <id> <stars>`
-- `/setrubprice <id> <rubles>`
-- `/settitle <id> <title>`
-- `/setcaption <id> <text>`
-- `/delete <id>`
-- `/sales`
-- `/orders`
-- `/buyyoomoney <id>`
-- `/balance`
-- `/transactions [count]`
-- `/withdraw`
 
 ## Структура проекта
 
