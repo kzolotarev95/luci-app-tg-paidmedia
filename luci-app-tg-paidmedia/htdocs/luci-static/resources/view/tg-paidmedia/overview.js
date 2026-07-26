@@ -298,7 +298,7 @@ function firstMeaningfulLine(text) {
 
 function buildYooMoneyGuideMarkup() {
 	return [
-		'<details class="tg-paidmedia-inline-guide">',
+		'<details class="tg-paidmedia-inline-guide tg-paidmedia-inline-guide-yellow">',
 		'<summary>Открыть / скрыть инструкцию по ЮMoney</summary>',
 		'<div class="tg-paidmedia-inline-guide-body">',
 		'<p><strong>Быстрые ссылки</strong></p>',
@@ -372,7 +372,7 @@ function buildYooMoneyGuideMarkup() {
 
 function buildYooMoneyTunnelGuideMarkup() {
 	return [
-		'<details class="tg-paidmedia-inline-guide">',
+		'<details class="tg-paidmedia-inline-guide tg-paidmedia-inline-guide-yellow">',
 		'<summary>Пошагово: reverse tunnel для ЮMoney через VPS</summary>',
 		'<div class="tg-paidmedia-inline-guide-body">',
 		'<p><strong>Когда это нужно</strong></p>',
@@ -1482,6 +1482,31 @@ return view.extend({
 
 			.tg-paidmedia-inline-guide-body {
 				padding: 0 .9rem .9rem;
+			}
+
+			.tg-paidmedia-inline-guide-yellow {
+				border-color: #d6ab2f;
+				background: linear-gradient(180deg, #fff9da 0%, #fff2b8 100%);
+				box-shadow: 0 10px 24px rgba(169, 121, 18, 0.10);
+			}
+
+			.tg-paidmedia-inline-guide-yellow summary {
+				background: linear-gradient(135deg, #ffe588 0%, #ffd24d 100%);
+				color: #5e4300;
+				border-bottom: 1px solid rgba(142, 101, 10, 0.18);
+			}
+
+			.tg-paidmedia-inline-guide-yellow .tg-paidmedia-inline-guide-body {
+				background: rgba(255, 252, 232, 0.72);
+			}
+
+			.tg-paidmedia-inline-guide-yellow p,
+			.tg-paidmedia-inline-guide-yellow li {
+				color: #664d03;
+			}
+
+			.tg-paidmedia-inline-guide-yellow code {
+				background: rgba(255, 243, 194, 0.92);
 			}
 
 			.tg-paidmedia-inline-code {
