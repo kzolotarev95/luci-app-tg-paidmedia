@@ -228,6 +228,206 @@ function detectDarkTheme() {
 	return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
 }
 
+function clampColorChannel(value) {
+	return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function colorToString(color, alphaOverride) {
+	var alpha;
+
+	if (!color)
+		return '';
+
+	alpha = typeof alphaOverride === 'number' ? alphaOverride : (typeof color.a === 'number' ? color.a : 1);
+
+	if (alpha >= 0.999)
+		return 'rgb(' + clampColorChannel(color.r) + ', ' + clampColorChannel(color.g) + ', ' + clampColorChannel(color.b) + ')';
+
+	return 'rgba(' + clampColorChannel(color.r) + ', ' + clampColorChannel(color.g) + ', ' + clampColorChannel(color.b) + ', ' + Math.max(0, Math.min(1, alpha)) + ')';
+}
+
+function mixColors(base, overlay, ratio) {
+	var weight = Math.max(0, Math.min(1, ratio));
+	var baseAlpha, overlayAlpha;
+
+	if (!base && !overlay)
+		return null;
+
+	if (!base)
+		return overlay;
+
+	if (!overlay)
+		return base;
+
+	baseAlpha = typeof base.a === 'number' ? base.a : 1;
+	overlayAlpha = typeof overlay.a === 'number' ? overlay.a : 1;
+
+	return {
+		r: (base.r * (1 - weight)) + (overlay.r * weight),
+		g: (base.g * (1 - weight)) + (overlay.g * weight),
+		b: (base.b * (1 - weight)) + (overlay.b * weight),
+		a: (baseAlpha * (1 - weight)) + (overlayAlpha * weight)
+	};
+}
+
+function shiftColor(color, amount) {
+	if (!color)
+		return null;
+
+	return mixColors(
+		color,
+		amount >= 0 ? { r: 255, g: 255, b: 255, a: 1 } : { r: 0, g: 0, b: 0, a: 1 },
+		Math.min(1, Math.abs(amount))
+	);
+}
+
+function resolveThemeColor(node, property, fallback) {
+	var current = node;
+	var styles, color;
+
+	while (current) {
+		styles = window.getComputedStyle(current);
+		color = parseColorValue(styles.getPropertyValue(property) || styles[property]);
+
+		if (color && color.a > 0.03)
+			return color;
+
+		current = current.parentElement;
+	}
+
+	return fallback || null;
+}
+
+function buildThemeProbe() {
+	var wrapper, section, note, link, input, primary, secondary;
+
+	if (typeof document === 'undefined' || !document.body)
+		return null;
+
+	wrapper = document.createElement('div');
+	wrapper.style.position = 'absolute';
+	wrapper.style.left = '-9999px';
+	wrapper.style.top = '-9999px';
+	wrapper.style.width = '320px';
+	wrapper.style.visibility = 'hidden';
+	wrapper.style.pointerEvents = 'none';
+	wrapper.style.opacity = '0';
+	wrapper.style.zIndex = '-1';
+
+	section = document.createElement('div');
+	section.className = 'cbi-section';
+
+	note = document.createElement('p');
+	note.textContent = 'Theme probe';
+	section.appendChild(note);
+
+	link = document.createElement('a');
+	link.href = '#';
+	link.textContent = 'Theme link';
+	section.appendChild(link);
+
+	input = document.createElement('input');
+	input.type = 'text';
+	input.placeholder = 'Theme input';
+	section.appendChild(input);
+
+	primary = document.createElement('button');
+	primary.className = 'btn cbi-button cbi-button-action';
+	primary.type = 'button';
+	primary.textContent = 'Apply';
+	section.appendChild(primary);
+
+	secondary = document.createElement('button');
+	secondary.className = 'btn cbi-button';
+	secondary.type = 'button';
+	secondary.textContent = 'Cancel';
+	section.appendChild(secondary);
+
+	wrapper.appendChild(section);
+	document.body.appendChild(wrapper);
+
+	return {
+		wrapper: wrapper,
+		section: section,
+		note: note,
+		link: link,
+		input: input,
+		primary: primary,
+		secondary: secondary
+	};
+}
+
+function resolveThemePalette() {
+	var probe = buildThemeProbe();
+	var isDark = detectDarkTheme();
+	var pageNode, pageBg, pageText, sectionStyle, noteStyle, linkStyle, inputStyle, primaryStyle, secondaryStyle;
+	var surface, surfaceSoft, border, text, textSoft, textMuted, accent, accentSoft, shadow;
+
+	if (!probe)
+		return null;
+
+	try {
+		pageNode = document.querySelector('.main-right') ||
+			document.querySelector('.main') ||
+			document.querySelector('#maincontent') ||
+			document.body;
+
+		sectionStyle = window.getComputedStyle(probe.section);
+		noteStyle = window.getComputedStyle(probe.note);
+		linkStyle = window.getComputedStyle(probe.link);
+		inputStyle = window.getComputedStyle(probe.input);
+		primaryStyle = window.getComputedStyle(probe.primary);
+		secondaryStyle = window.getComputedStyle(probe.secondary);
+
+		pageBg = resolveThemeColor(pageNode, 'backgroundColor', parseColorValue('#ffffff'));
+		pageText = resolveThemeColor(pageNode, 'color', parseColorValue('#1f2933'));
+		surface = parseColorValue(sectionStyle.backgroundColor) || mixColors(pageBg, isDark ? parseColorValue('#ffffff') : parseColorValue('#000000'), isDark ? 0.05 : 0.03);
+		border = parseColorValue(sectionStyle.borderColor) || parseColorValue(inputStyle.borderColor) || mixColors(surface, pageText, isDark ? 0.25 : 0.18);
+		text = parseColorValue(sectionStyle.color) || parseColorValue(noteStyle.color) || pageText;
+		accent = parseColorValue(primaryStyle.backgroundColor) || parseColorValue(linkStyle.color) || parseColorValue('#0b6fdb');
+		surfaceSoft = parseColorValue(inputStyle.backgroundColor) || shiftColor(surface, isDark ? 0.04 : -0.03);
+		textSoft = parseColorValue(noteStyle.color) || mixColors(text, surface, 0.3);
+		textMuted = mixColors(text, surface, 0.48);
+		accentSoft = mixColors(surface, accent, isDark ? 0.18 : 0.12);
+		shadow = sectionStyle.boxShadow && sectionStyle.boxShadow !== 'none' ? sectionStyle.boxShadow : (isDark ? '0 8px 20px rgba(0, 0, 0, 0.18)' : '0 1px 2px rgba(16, 24, 40, 0.06)');
+
+		return {
+			'--tg-surface': colorToString(surface),
+			'--tg-surface-soft': colorToString(surfaceSoft),
+			'--tg-border': colorToString(border),
+			'--tg-border-strong': colorToString(mixColors(border, text, isDark ? 0.16 : 0.22)),
+			'--tg-text': colorToString(text),
+			'--tg-text-soft': colorToString(textSoft),
+			'--tg-text-muted': colorToString(textMuted),
+			'--tg-accent': colorToString(accent),
+			'--tg-accent-soft': colorToString(accentSoft),
+			'--tg-shadow': shadow,
+			'--tg-primary-button-bg': colorToString(parseColorValue(primaryStyle.backgroundColor) || accent),
+			'--tg-primary-button-border': colorToString(parseColorValue(primaryStyle.borderColor) || accent),
+			'--tg-primary-button-text': colorToString(parseColorValue(primaryStyle.color) || parseColorValue('#ffffff')),
+			'--tg-secondary-button-bg': colorToString(parseColorValue(secondaryStyle.backgroundColor) || surfaceSoft),
+			'--tg-secondary-button-border': colorToString(parseColorValue(secondaryStyle.borderColor) || border),
+			'--tg-secondary-button-text': colorToString(parseColorValue(secondaryStyle.color) || text),
+			'--tg-help-bg': colorToString(shiftColor(surfaceSoft, isDark ? 0.03 : 0.01)),
+			'--tg-help-border': colorToString(border),
+			'--tg-help-text': colorToString(textSoft),
+			'--tg-tooltip-bg': colorToString(surface),
+			'--tg-tooltip-border': colorToString(border),
+			'--tg-tooltip-shadow': shadow,
+			'--tg-log-bg': colorToString(mixColors(surface, pageBg, isDark ? 0.28 : 0.18)),
+			'--tg-input-bg': colorToString(parseColorValue(inputStyle.backgroundColor) || surfaceSoft),
+			'--tg-input-border': colorToString(parseColorValue(inputStyle.borderColor) || border),
+			'--tg-input-placeholder': colorToString(mixColors(text, surface, 0.58)),
+			'--tg-focus-border': colorToString(parseColorValue(inputStyle.borderColor) || accent),
+			'--tg-focus-ring': '0 0 0 2px ' + colorToString(accent, isDark ? 0.18 : 0.10),
+			'--tg-tab-bg': colorToString(parseColorValue(secondaryStyle.backgroundColor) || surfaceSoft)
+		};
+	}
+	finally {
+		document.body.removeChild(probe.wrapper);
+	}
+}
+
 function classifyLogLine(line) {
 	var source = String(line || '').toLowerCase();
 
@@ -1430,10 +1630,19 @@ return view.extend({
 	},
 
 	applyThemeClass: function(root) {
+		var palette, keys, i;
+
 		if (!root || !root.classList)
 			return root;
 
 		root.classList.toggle('is-dark-theme', detectDarkTheme());
+
+		palette = resolveThemePalette();
+		keys = palette ? Object.keys(palette) : [];
+
+		for (i = 0; i < keys.length; i++)
+			root.style.setProperty(keys[i], palette[keys[i]]);
+
 		return root;
 	},
 
