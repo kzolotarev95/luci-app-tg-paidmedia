@@ -2241,7 +2241,7 @@ return view.extend({
 		var checkedAt = String((secretCheck || {}).checked_at || '').trim();
 
 		if (!checkedAt)
-			return '-';
+			return '\u0415\u0449\u0451 \u043D\u0435 \u0431\u044B\u043B\u043E webhook \u043E\u0442 \u042eMoney';
 
 		return checkedAt + (reason ? ' / ' + reason : '');
 	},
@@ -2252,10 +2252,40 @@ return view.extend({
 		var health = botStatus.yoomoney_health || {};
 		var secretCheck = health.last_secret_check || {};
 		var tunnelMeta = this.extractServiceInstance(serviceStatus, 'yoomoney-tunnel');
+		var secretBadge;
+		var tunnelBadge;
+		var tunnelTargetText;
+		var warningsText;
+
+		if (!health.secret_configured)
+			secretBadge = this.buildStateBadge(false, '', '\u0421\u0435\u043A\u0440\u0435\u0442 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D');
+		else if (secretCheck.ok)
+			secretBadge = this.buildStateBadge(true, '\u041F\u0440\u043E\u0448\u0451\u043B', '');
+		else if (secretCheck.checked_at)
+			secretBadge = this.buildStateBadge(false, '', '\u041E\u0448\u0438\u0431\u043A\u0430 sign');
+		else
+			secretBadge = this.buildStateBadge(false, '', '\u0416\u0434\u0451\u043C \u0442\u0435\u0441\u0442\u043E\u0432\u044B\u0439 webhook');
+
+		if (!health.tunnel_enabled)
+			tunnelBadge = this.buildStateBadge(false, '', '\u0412\u044B\u043A\u043B\u044E\u0447\u0435\u043D');
+		else if (!health.tunnel_configured)
+			tunnelBadge = this.buildStateBadge(false, '', '\u041D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D');
+		else if (tunnelMeta.running)
+			tunnelBadge = this.buildStateBadge(true, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', '');
+		else
+			tunnelBadge = this.buildStateBadge(false, '', '\u041D\u0435 \u043F\u043E\u0434\u043D\u044F\u043B\u0441\u044F');
+
+		tunnelTargetText = String(health.tunnel_target || '');
+		if (!tunnelTargetText && health.tunnel_enabled && health.tunnel_missing_fields && health.tunnel_missing_fields.length)
+			tunnelTargetText = '\u0417\u0430\u043F\u043E\u043B\u043D\u0438: ' + health.tunnel_missing_fields.join(', ');
+		if (!tunnelTargetText)
+			tunnelTargetText = '-';
+
+		warningsText = health.warnings && health.warnings.length ? health.warnings.join(' | ') : '\u041D\u0435\u0442';
 		var cards = [
 			{
 				label: '\u0421\u0435\u043A\u0440\u0435\u0442 \u042eMoney',
-				value: this.buildStateBadge(!!secretCheck.ok, '\u041F\u0440\u043E\u0448\u0451\u043B', secretCheck.checked_at ? '\u041E\u0448\u0438\u0431\u043A\u0430' : '\u0415\u0449\u0451 \u043D\u0435 \u043F\u0440\u043E\u0432\u0435\u0440\u044F\u043B\u0441\u044F')
+				value: secretBadge
 			},
 			{
 				label: 'Webhook \u042eMoney',
@@ -2267,7 +2297,7 @@ return view.extend({
 			},
 			{
 				label: 'Reverse tunnel',
-				value: this.buildStateBadge(!!tunnelMeta.running, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', health.tunnel_enabled ? '\u041D\u0435 \u043F\u043E\u0434\u043D\u044F\u043B\u0441\u044F' : '\u0412\u044B\u043A\u043B\u044E\u0447\u0435\u043D')
+				value: tunnelBadge
 			},
 			{
 				label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u044F\u044F \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 sign',
@@ -2276,7 +2306,7 @@ return view.extend({
 			},
 			{
 				label: 'Tunnel target',
-				value: String(health.tunnel_target || '-'),
+				value: tunnelTargetText,
 				subtle: true
 			},
 			{
@@ -2286,7 +2316,7 @@ return view.extend({
 			},
 			{
 				label: '\u041F\u0440\u0435\u0434\u0443\u043F\u0440\u0435\u0436\u0434\u0435\u043D\u0438\u044F',
-				value: health.warnings && health.warnings.length ? health.warnings.join(' | ') : '\u041D\u0435\u0442',
+				value: warningsText,
 				subtle: true
 			}
 		];

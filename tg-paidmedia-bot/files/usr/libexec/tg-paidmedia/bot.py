@@ -779,8 +779,24 @@ class TelegramPaidMediaBot:
 
         return missing
 
-    def build_yoomoney_tunnel_target(self):
+    def yoomoney_tunnel_missing_fields(self):
+        missing = []
+
         if not self.yoomoney_tunnel_host:
+            missing.append("host")
+        if not self.yoomoney_tunnel_user:
+            missing.append("user")
+        if self.yoomoney_tunnel_remote_port <= 0:
+            missing.append("remote port")
+        if not self.yoomoney_tunnel_local_host:
+            missing.append("local host")
+        if self.yoomoney_tunnel_local_port <= 0:
+            missing.append("local port")
+
+        return missing
+
+    def build_yoomoney_tunnel_target(self):
+        if self.yoomoney_tunnel_missing_fields():
             return ""
 
         return "{0}@{1}:{2} -> {3}:{4}".format(
@@ -796,21 +812,17 @@ class TelegramPaidMediaBot:
         secret_check = self.state.get("last_yoomoney_secret_check", {})
         tunnel_target = self.build_yoomoney_tunnel_target()
         missing = self.yoomoney_missing_fields()
+        tunnel_missing = self.yoomoney_tunnel_missing_fields()
         warnings = []
 
         if self.yoomoney_enabled and missing:
-            warnings.append("Missing: " + ", ".join(missing))
+            warnings.append("YooMoney: missing " + ", ".join(missing))
         if self.yoomoney_callback_url and (
             callback.scheme.lower() != "https" or not callback.netloc
         ):
-            warnings.append("Callback URL should be public HTTPS")
-        if self.yoomoney_tunnel_enabled and not (
-            self.yoomoney_tunnel_host
-            and self.yoomoney_tunnel_user
-            and self.yoomoney_tunnel_remote_port > 0
-            and self.yoomoney_tunnel_local_port > 0
-        ):
-            warnings.append("Reverse tunnel is enabled but incomplete")
+            warnings.append("YooMoney: callback URL should be public HTTPS")
+        if self.yoomoney_tunnel_enabled and tunnel_missing:
+            warnings.append("Tunnel: missing " + ", ".join(tunnel_missing))
 
         return {
             "enabled": bool(self.yoomoney_enabled),
@@ -832,7 +844,8 @@ class TelegramPaidMediaBot:
             "payment_page_path": self.yoomoney_payment_path,
             "last_secret_check": secret_check,
             "tunnel_enabled": bool(self.yoomoney_tunnel_enabled),
-            "tunnel_configured": bool(tunnel_target),
+            "tunnel_configured": not bool(tunnel_missing),
+            "tunnel_missing_fields": tunnel_missing,
             "tunnel_target": tunnel_target,
             "tunnel_private_key": self.yoomoney_tunnel_private_key,
             "tunnel_accept_hostkey": bool(self.yoomoney_tunnel_accept_hostkey),
