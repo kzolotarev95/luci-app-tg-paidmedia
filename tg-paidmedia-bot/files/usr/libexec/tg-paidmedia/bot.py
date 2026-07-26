@@ -450,6 +450,7 @@ class TelegramPaidMediaBot:
         self.state["stats"].setdefault("sbp_orders_paid", 0)
         self.state["stats"].setdefault("yoomoney_orders_created", 0)
         self.state["stats"].setdefault("yoomoney_orders_paid", 0)
+        self.state["stats"].setdefault("total_rub_revenue", 0)
         self.state.setdefault("last_balance", {})
         self.state.setdefault("last_purchase", {})
         self.state.setdefault("recent_purchases", [])
@@ -1149,6 +1150,14 @@ class TelegramPaidMediaBot:
         self.save_state()
         self.update_status(last_yoomoney_event=self.state["last_yoomoney_event"])
 
+    def add_rub_revenue(self, amount_rub):
+        try:
+            amount = int(amount_rub or 0)
+        except (TypeError, ValueError):
+            amount = 0
+        if amount > 0:
+            self.state["stats"]["total_rub_revenue"] += amount
+
     def deliver_yoomoney_order(self, order):
         item = self.get_item(order.get("item_id"))
         if not item:
@@ -1165,6 +1174,7 @@ class TelegramPaidMediaBot:
             )
             self.send_direct_item(order["chat_id"], item)
             self.state["stats"]["yoomoney_orders_paid"] += 1
+            self.add_rub_revenue(order.get("amount_rub", 0))
             self.append_recent_purchase(
                 "ЮMoney",
                 user_id=order.get("user_id"),
@@ -1261,6 +1271,7 @@ class TelegramPaidMediaBot:
             )
             self.send_direct_item(order["chat_id"], item)
             self.state["stats"]["sbp_orders_paid"] += 1
+            self.add_rub_revenue(order.get("amount_rub", 0))
             self.append_recent_purchase(
                 "СБП / Platega",
                 user_id=order.get("user_id"),

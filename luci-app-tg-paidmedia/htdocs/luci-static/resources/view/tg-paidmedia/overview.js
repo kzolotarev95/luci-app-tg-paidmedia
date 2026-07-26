@@ -371,6 +371,15 @@ function boolLabel(value) {
 	return value ? '\u0414\u0430' : '\u041d\u0435\u0442';
 }
 
+function formatRubDisplay(value) {
+	var amount = Number(value || 0);
+
+	if (!isFinite(amount))
+		amount = 0;
+
+	return String(Math.round(amount)) + ' RUB';
+}
+
 function escapeHTML(text) {
 	return String(text == null ? '' : text).replace(/[&<>"']/g, function(ch) {
 		return {
@@ -854,17 +863,19 @@ return view.extend({
 				justify-content: center;
 				width: 3rem;
 				height: 3rem;
-				border: 1px solid var(--tg-border-strong);
+				border: 1px solid rgba(232, 190, 74, 0.48);
 				border-radius: 8px;
-				background: var(--tg-accent-soft);
+				background: linear-gradient(145deg, rgba(120, 88, 18, 0.28), rgba(255, 220, 126, 0.12));
+				box-shadow: inset 0 1px 0 rgba(255, 241, 186, 0.18), 0 0 18px rgba(212, 166, 49, 0.12);
 			}
 
 			.tg-paidmedia-logo-mark::before {
 				content: "TG";
-				color: var(--tg-accent);
+				color: #f5d76b;
 				font-size: 1rem;
 				font-weight: 700;
 				letter-spacing: .04em;
+				text-shadow: 0 0 12px rgba(234, 192, 74, 0.28);
 			}
 
 			.tg-paidmedia-logo-wordmark {
@@ -875,17 +886,18 @@ return view.extend({
 
 			.tg-paidmedia-logo-title {
 				margin: 0;
-				color: var(--tg-text);
+				color: #f4da7e;
 				font-size: 1.2rem;
-				font-weight: 600;
+				font-weight: 700;
 				line-height: 1.2;
+				text-shadow: 0 0 16px rgba(228, 186, 65, 0.14);
 			}
 
 			.tg-paidmedia-logo-subtitle {
 				margin: 0;
-				color: var(--tg-text-soft);
+				color: #ccb064;
 				font-size: .84rem;
-				font-weight: 500;
+				font-weight: 600;
 				letter-spacing: .04em;
 				text-transform: uppercase;
 			}
@@ -1475,19 +1487,44 @@ return view.extend({
 
 			.tg-paidmedia-page-title {
 				margin: 0;
-				color: var(--tg-text);
+				color: #f8e7a4;
+				background: linear-gradient(110deg, #7f5c10 0%, #f6d76a 18%, #fff6c4 34%, #c8931e 50%, #fff1a1 66%, #9c6b0a 82%, #f6d76a 100%);
+				background-size: 220% auto;
+				-webkit-background-clip: text;
+				background-clip: text;
+				-webkit-text-fill-color: transparent;
 				font-size: clamp(1.45rem, 3vw, 1.95rem);
 				font-weight: 800;
 				line-height: 1.02;
 				letter-spacing: -.03em;
+				text-shadow: 0 0 18px rgba(234, 191, 71, 0.16);
+				animation: tg-paidmedia-gold-flow 4.8s linear infinite;
 			}
 
 			.tg-paidmedia-page-subtitle {
 				margin: .22rem 0 0;
-				color: var(--tg-text-soft);
+				color: #c7a74d;
 				font-size: .76rem;
-				font-weight: 500;
+				font-weight: 700;
 				line-height: 1.36;
+				letter-spacing: .02em;
+			}
+
+			@keyframes tg-paidmedia-gold-flow {
+				0% {
+					background-position: 0% 50%;
+					filter: drop-shadow(0 0 0 rgba(255, 225, 120, 0));
+				}
+
+				50% {
+					background-position: 100% 50%;
+					filter: drop-shadow(0 0 8px rgba(255, 225, 120, 0.18));
+				}
+
+				100% {
+					background-position: 0% 50%;
+					filter: drop-shadow(0 0 0 rgba(255, 225, 120, 0));
+				}
 			}
 
 			.tg-paidmedia-page-header-side,
@@ -2115,7 +2152,6 @@ return view.extend({
 		var filteredLogText = filterBotLogText((data[3] || {}).stdout || '', 200);
 		var serviceMeta = this.extractServiceRunning(serviceStatus);
 		var initMeta = initList['tg-paidmedia'] || {};
-		var balance = botStatus.last_balance || {};
 		var lastPurchase = botStatus.last_purchase || {};
 		var lastPlategaEvent = botStatus.last_platega_event || {};
 		var lastYoomoneyEvent = botStatus.last_yoomoney_event || {};
@@ -2133,12 +2169,12 @@ return view.extend({
 			{ label: '\u0418\u043c\u044f \u0431\u043e\u0442\u0430', value: String(botStatus.bot_username || '-') },
 			{ label: '\u0422\u043e\u0432\u0430\u0440\u043e\u0432 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435', value: String(botStatus.catalog_items || 0) },
 			{ label: '\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u043e\u0432', value: String(botStatus.admin_count || 0) },
-			{ label: '\u0411\u0430\u043b\u0430\u043d\u0441 Stars', value: String(balance.amount || 0) },
-			{ label: 'Stars purchases', value: String(stats.stars_purchases || 0) },
-			{ label: 'SBP orders', value: String(stats.sbp_orders_created || 0) },
-			{ label: 'SBP delivered', value: String(stats.sbp_orders_paid || 0) },
-			{ label: 'ЮMoney orders', value: String(stats.yoomoney_orders_created || 0) },
-			{ label: 'ЮMoney delivered', value: String(stats.yoomoney_orders_paid || 0) },
+			{ label: '\u0411\u0430\u043b\u0430\u043d\u0441 RUB', value: formatRubDisplay(stats.total_rub_revenue || 0) },
+			{ label: '\u041f\u043e\u043a\u0443\u043f\u043e\u043a Stars', value: String(stats.stars_purchases || 0) },
+			{ label: '\u0417\u0430\u043a\u0430\u0437\u043e\u0432 \u0421\u0411\u041f', value: String(stats.sbp_orders_created || 0) },
+			{ label: '\u0412\u044b\u0434\u0430\u043d\u043e \u0421\u0411\u041f', value: String(stats.sbp_orders_paid || 0) },
+			{ label: '\u0417\u0430\u043a\u0430\u0437\u043e\u0432 \u042eMoney', value: String(stats.yoomoney_orders_created || 0) },
+			{ label: '\u0412\u044b\u0434\u0430\u043d\u043e \u042eMoney', value: String(stats.yoomoney_orders_paid || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0441\u0442\u0430\u0440\u0442', value: restartInsight.lastStartAt || '-', subtle: true },
 			{ label: '\u0420\u0435\u0441\u0442\u0430\u0440\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0441', value: String(startStats.countLastHour || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0441\u0442\u0430\u0440\u0442\u044B', value: startStats.recentStarts.length ? startStats.recentStarts.join(' | ') : '-', subtle: true },
@@ -2151,12 +2187,12 @@ return view.extend({
 				subtle: true
 			},
 			{
-				label: 'Last SBP event',
+				label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435 \u0421\u0411\u041f',
 				value: lastPlategaEvent.status ? String(lastPlategaEvent.status + ' / ' + (lastPlategaEvent.transaction_id || '-')) : '-',
 				subtle: true
 			},
 			{
-				label: 'Last ЮMoney event',
+				label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0435 \u0441\u043e\u0431\u044b\u0442\u0438\u0435 \u042eMoney',
 				value: lastYoomoneyEvent.status ? String(lastYoomoneyEvent.status + ' / ' + (lastYoomoneyEvent.operation_id || '-')) : '-',
 				subtle: true
 			}
@@ -2190,7 +2226,7 @@ return view.extend({
 			E('div', { 'class': 'tg-paidmedia-section-head tg-paidmedia-section-headlined' }, [
 				E('div', {}, [
 					E('h3', { 'class': 'tg-paidmedia-section-title tg-paidmedia-section-title-strong' }, [ '\u0421\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u0430' ]),
-					E('p', { 'class': 'tg-paidmedia-note tg-paidmedia-status-note' }, [ '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0431\u0437\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u044b \u0431\u043e\u0442\u0430, \u0431\u0430\u043b\u0430\u043d\u0441\u0430 Stars \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u0432 \u043b\u043e\u0433\u0438.' ])
+					E('p', { 'class': 'tg-paidmedia-note tg-paidmedia-status-note' }, [ '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0431\u0437\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u044b \u0431\u043e\u0442\u0430, \u0440\u0443\u0431\u043b\u0451\u0432\u044b\u0445 \u043f\u0440\u043e\u0434\u0430\u0436, Stars \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u0432 \u043b\u043e\u0433\u0438.' ])
 				])
 			]),
 			errorBlock || '',
@@ -2568,9 +2604,12 @@ return view.extend({
 				this.renderStyles(),
 				E('div', { 'class': 'tg-paidmedia-shell' }, [
 					E('div', { 'class': 'tg-paidmedia-page-header' }, [
-						E('div', { 'class': 'tg-paidmedia-headline' }, [
-							E('h1', { 'class': 'tg-paidmedia-page-title' }, [ 'TG Paid Media' ]),
-							E('p', { 'class': 'tg-paidmedia-page-subtitle' }, [ 'LuCI-\u043F\u0430\u043D\u0435\u043B\u044C \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F Telegram Stars' ])
+						E('div', { 'class': 'tg-paidmedia-headline tg-paidmedia-logo' }, [
+							E('div', { 'class': 'tg-paidmedia-logo-mark' }),
+							E('div', { 'class': 'tg-paidmedia-logo-wordmark' }, [
+								E('h1', { 'class': 'tg-paidmedia-page-title tg-paidmedia-logo-title' }, [ 'TG Paid Media' ]),
+								E('p', { 'class': 'tg-paidmedia-page-subtitle tg-paidmedia-logo-subtitle' }, [ 'LuCI-\u043F\u0430\u043D\u0435\u043B\u044C Telegram Stars, СБП \u0438 ЮMoney' ])
+							])
 						]),
 						E('div', { 'class': 'tg-paidmedia-page-header-side' }, [
 							headerStatusTarget
