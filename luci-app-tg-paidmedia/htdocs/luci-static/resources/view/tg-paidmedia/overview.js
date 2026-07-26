@@ -1858,16 +1858,45 @@ return view.extend({
 	},
 
 	updatePanels: function(statusTarget, logTarget, headerStatusTarget, data) {
+		var shouldStickToBottom;
+
 		dom.content(statusTarget, this.buildStatusSection(data, statusTarget, logTarget, headerStatusTarget));
 		if (headerStatusTarget)
 			dom.content(headerStatusTarget, [ this.buildHeaderStatus(data) ]);
+
+		shouldStickToBottom = this.shouldAutoScrollLog(logTarget);
 		logTarget._rawText = trimLog((data[3] || {}).stdout || '', 200) || '\u041b\u043e\u0433\u0438 \u043f\u043e\u043a\u0430 \u043f\u0443\u0441\u0442\u044b.';
 		logTarget.innerHTML = renderLogMarkup(logTarget._rawText);
+		if (shouldStickToBottom)
+			this.scrollLogToBottom(logTarget);
 	},
 
-	toggleLogPanel: function(logSection, toggleButton) {
+	scrollLogToBottom: function(logTarget) {
+		if (!logTarget)
+			return;
+
+		logTarget.scrollTop = logTarget.scrollHeight;
+	},
+
+	shouldAutoScrollLog: function(logTarget) {
+		var threshold;
+
+		if (!logTarget || !logTarget._initialized) {
+			if (logTarget)
+				logTarget._initialized = true;
+			return true;
+		}
+
+		threshold = 48;
+		return (logTarget.scrollHeight - logTarget.scrollTop - logTarget.clientHeight) <= threshold;
+	},
+
+	toggleLogPanel: function(logSection, toggleButton, logTarget) {
 		var collapsed = logSection.classList.toggle('is-collapsed');
 		dom.content(toggleButton, [ collapsed ? '\uD83D\uDCC2 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0436\u0443\u0440\u043D\u0430\u043B' : '\uD83D\uDCD5 \u0421\u043A\u0440\u044B\u0442\u044C \u0436\u0443\u0440\u043D\u0430\u043B' ]);
+
+		if (!collapsed)
+			window.requestAnimationFrame(this.scrollLogToBottom.bind(this, logTarget));
 	},
 
 	toggleInfoPanel: function(infoSection, toggleButton) {
@@ -2126,7 +2155,7 @@ return view.extend({
 		var logToggle = E('button', {
 			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-log-toggle',
 			'click': ui.createHandlerFn(this, function() {
-				this.toggleLogPanel(logSection, logToggle);
+				this.toggleLogPanel(logSection, logToggle, logTarget);
 			})
 		}, [ '\uD83D\uDCC2 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0436\u0443\u0440\u043D\u0430\u043B' ]);
 		var logCopy = E('button', {
