@@ -148,10 +148,12 @@ start_service() {
 		procd_append_param env TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY="$yoomoney_tunnel_accept_hostkey"
 		procd_append_param env TG_YOOMONEY_TUNNEL_STATUS_PATH="$yoomoney_tunnel_status_path"
 		procd_append_param env TG_YOOMONEY_TUNNEL_RETRY_DELAY="10"
+		procd_append_param env TG_YOOMONEY_TUNNEL_FAST_RETRY_DELAY="2"
 		procd_append_param env TG_YOOMONEY_TUNNEL_HEARTBEAT_INTERVAL="15"
 		procd_append_param env TG_YOOMONEY_TUNNEL_SERVER_ALIVE_INTERVAL="10"
 		procd_append_param env TG_YOOMONEY_TUNNEL_SERVER_ALIVE_COUNT_MAX="2"
 		procd_append_param env TG_YOOMONEY_TUNNEL_CONNECT_GRACE="2"
+		procd_append_param env TG_YOOMONEY_TUNNEL_CONNECT_TIMEOUT="8"
 		procd_set_param respawn 3600 5 5
 		procd_set_param stdout 1
 		procd_set_param stderr 1

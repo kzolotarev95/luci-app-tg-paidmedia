@@ -13,10 +13,12 @@ PRIVATE_KEY="${TG_YOOMONEY_TUNNEL_PRIVATE_KEY:-}"
 ACCEPT_HOSTKEY="${TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY:-1}"
 STATUS_PATH="${TG_YOOMONEY_TUNNEL_STATUS_PATH:-/var/run/tg-paidmedia/yoomoney-tunnel.status}"
 RETRY_DELAY="${TG_YOOMONEY_TUNNEL_RETRY_DELAY:-10}"
+FAST_RETRY_DELAY="${TG_YOOMONEY_TUNNEL_FAST_RETRY_DELAY:-2}"
 HEARTBEAT_INTERVAL="${TG_YOOMONEY_TUNNEL_HEARTBEAT_INTERVAL:-15}"
 SERVER_ALIVE_INTERVAL="${TG_YOOMONEY_TUNNEL_SERVER_ALIVE_INTERVAL:-10}"
 SERVER_ALIVE_COUNT_MAX="${TG_YOOMONEY_TUNNEL_SERVER_ALIVE_COUNT_MAX:-2}"
 CONNECT_GRACE="${TG_YOOMONEY_TUNNEL_CONNECT_GRACE:-2}"
+CONNECT_TIMEOUT="${TG_YOOMONEY_TUNNEL_CONNECT_TIMEOUT:-8}"
 ATTEMPT="0"
 
 if [ -z "$HOST" ]; then
@@ -80,6 +82,8 @@ case "$SSH_VERSION" in
 	*)
 		set -- "$@" \
 			-o ExitOnForwardFailure=yes \
+			-o ConnectTimeout="$CONNECT_TIMEOUT" \
+			-o ConnectionAttempts=1 \
 			-o ServerAliveInterval="$SERVER_ALIVE_INTERVAL" \
 			-o ServerAliveCountMax="$SERVER_ALIVE_COUNT_MAX" \
 			-o TCPKeepAlive=yes \
@@ -101,6 +105,7 @@ fi
 set -- "$@" -R "$REMOTE_BIND" "$DESTINATION"
 
 while true; do
+	SLEEP_DELAY="$RETRY_DELAY"
 	ATTEMPT=$((ATTEMPT + 1))
 	write_status "connecting" "Opening reverse SSH tunnel, attempt ${ATTEMPT}"
 	echo "tg-paidmedia tunnel: starting reverse SSH tunnel $DESTINATION $REMOTE_BIND (attempt $ATTEMPT)" >&2
@@ -119,15 +124,21 @@ while true; do
 		done
 		wait "$SSH_PID"
 		EXIT_CODE="$?"
-		write_status "retrying" "SSH tunnel disconnected with exit code ${EXIT_CODE}"
-		echo "tg-paidmedia tunnel: SSH tunnel disconnected with exit code $EXIT_CODE, retrying in ${RETRY_DELAY}s" >&2
+		if [ "$EXIT_CODE" -eq 0 ]; then
+			SLEEP_DELAY="$FAST_RETRY_DELAY"
+			write_status "retrying" "SSH session closed by remote side, reconnecting"
+			echo "tg-paidmedia tunnel: SSH session closed cleanly, retrying in ${SLEEP_DELAY}s" >&2
+		else
+			write_status "retrying" "SSH tunnel disconnected with exit code ${EXIT_CODE}"
+			echo "tg-paidmedia tunnel: SSH tunnel disconnected with exit code $EXIT_CODE, retrying in ${SLEEP_DELAY}s" >&2
+		fi
 	else
 		wait "$SSH_PID"
 		EXIT_CODE="$?"
 		write_status "retrying" "SSH tunnel failed with exit code ${EXIT_CODE}"
-		echo "tg-paidmedia tunnel: SSH tunnel failed with exit code $EXIT_CODE, retrying in ${RETRY_DELAY}s" >&2
+		echo "tg-paidmedia tunnel: SSH tunnel failed with exit code $EXIT_CODE, retrying in ${SLEEP_DELAY}s" >&2
 	fi
 	set -e
 
-	sleep "$RETRY_DELAY"
+	sleep "$SLEEP_DELAY"
 done

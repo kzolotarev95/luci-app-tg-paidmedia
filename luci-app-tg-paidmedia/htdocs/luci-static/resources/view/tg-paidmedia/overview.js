@@ -1124,10 +1124,31 @@ return view.extend({
 				background: currentColor;
 			}
 
+			@keyframes tg-paidmedia-status-pulse {
+				0% {
+					box-shadow: 0 0 0 0 rgba(127, 213, 161, 0.28);
+					transform: scale(1);
+				}
+				70% {
+					box-shadow: 0 0 0 .48rem rgba(127, 213, 161, 0);
+					transform: scale(1.08);
+				}
+				100% {
+					box-shadow: 0 0 0 0 rgba(127, 213, 161, 0);
+					transform: scale(1);
+				}
+			}
+
 			.tg-paidmedia-badge-running {
 				color: var(--tg-success);
 				background: var(--tg-badge-running-bg);
 				border: 1px solid var(--tg-badge-running-border);
+			}
+
+			.tg-paidmedia-badge-running::before,
+			.tg-paidmedia-top-badge.is-running::before {
+				animation: tg-paidmedia-status-pulse 1.8s ease-out infinite;
+				transform-origin: center;
 			}
 
 			.tg-paidmedia-badge-stopped {
