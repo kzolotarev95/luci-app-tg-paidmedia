@@ -2396,12 +2396,14 @@ return view.extend({
 			tunnelBadge = this.buildStateBadge(true, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', '');
 		else if (tunnelRuntimeState === 'connecting')
 			tunnelBadge = this.buildStateBadge(true, '\u041F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442\u0441\u044F', '');
+		else if (tunnelRuntimeState === 'stale')
+			tunnelBadge = this.buildStateBadge(false, '', '\u041D\u0435\u0442 heartbeat');
 		else if (tunnelRuntimeState === 'retrying')
 			tunnelBadge = this.buildStateBadge(false, '', '\u041F\u0435\u0440\u0435\u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0435\u0442\u0441\u044F');
 		else if (tunnelRuntimeState === 'stopped')
 			tunnelBadge = this.buildStateBadge(false, '', '\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D');
 		else if (tunnelMeta.running)
-			tunnelBadge = this.buildStateBadge(true, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', '');
+			tunnelBadge = this.buildStateBadge(true, '\u041F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442\u0441\u044F', '');
 		else
 			tunnelBadge = this.buildStateBadge(false, '', '\u041D\u0435 \u043F\u043E\u0434\u043D\u044F\u043B\u0441\u044F');
 

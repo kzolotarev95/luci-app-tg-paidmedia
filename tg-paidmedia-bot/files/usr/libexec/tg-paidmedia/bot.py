@@ -81,6 +81,18 @@ def utc_now():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
+def parse_utc_timestamp(raw_value):
+    value = str(raw_value or "").strip()
+    if not value:
+        return None
+    try:
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def env_bool(name, default=False):
     value = os.environ.get(name)
     if value is None:
@@ -941,7 +953,20 @@ class TelegramPaidMediaBot:
         tunnel_missing = self.yoomoney_tunnel_missing_fields()
         tunnel_runtime = self.load_yoomoney_tunnel_runtime()
         tunnel_runtime_state = tunnel_runtime.get("state")
+        tunnel_runtime_checked_at = parse_utc_timestamp(tunnel_runtime.get("checked_at"))
+        tunnel_runtime_age_seconds = None
         warnings = []
+
+        if tunnel_runtime_checked_at is not None:
+            tunnel_runtime_age_seconds = max(
+                0,
+                int(
+                    (
+                        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+                        - tunnel_runtime_checked_at.astimezone(datetime.timezone.utc)
+                    ).total_seconds()
+                ),
+            )
 
         if self.yoomoney_enabled and missing:
             warnings.append("YooMoney: missing " + ", ".join(missing))
@@ -969,6 +994,19 @@ class TelegramPaidMediaBot:
         ):
             warnings.append(
                 "Tunnel: runtime status file is empty, wait a few seconds after reboot"
+            )
+        if (
+            self.yoomoney_tunnel_enabled
+            and not tunnel_missing
+            and tunnel_runtime_state == "active"
+            and tunnel_runtime_age_seconds is not None
+            and tunnel_runtime_age_seconds > 45
+        ):
+            tunnel_runtime_state = "stale"
+            warnings.append(
+                "Tunnel: heartbeat is stale for {0}s, reconnect is expected".format(
+                    tunnel_runtime_age_seconds
+                )
             )
 
         return {
@@ -998,6 +1036,7 @@ class TelegramPaidMediaBot:
             "tunnel_accept_hostkey": bool(self.yoomoney_tunnel_accept_hostkey),
             "tunnel_runtime_state": tunnel_runtime_state,
             "tunnel_runtime_checked_at": tunnel_runtime.get("checked_at"),
+            "tunnel_runtime_age_seconds": tunnel_runtime_age_seconds,
             "tunnel_runtime_pid": tunnel_runtime.get("pid"),
             "tunnel_runtime_attempt": tunnel_runtime.get("attempt"),
             "tunnel_runtime_target": tunnel_runtime.get("target"),

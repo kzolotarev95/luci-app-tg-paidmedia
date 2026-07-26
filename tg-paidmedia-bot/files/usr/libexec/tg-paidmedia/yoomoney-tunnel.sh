@@ -13,6 +13,10 @@ PRIVATE_KEY="${TG_YOOMONEY_TUNNEL_PRIVATE_KEY:-}"
 ACCEPT_HOSTKEY="${TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY:-1}"
 STATUS_PATH="${TG_YOOMONEY_TUNNEL_STATUS_PATH:-/var/run/tg-paidmedia/yoomoney-tunnel.status}"
 RETRY_DELAY="${TG_YOOMONEY_TUNNEL_RETRY_DELAY:-10}"
+HEARTBEAT_INTERVAL="${TG_YOOMONEY_TUNNEL_HEARTBEAT_INTERVAL:-15}"
+SERVER_ALIVE_INTERVAL="${TG_YOOMONEY_TUNNEL_SERVER_ALIVE_INTERVAL:-10}"
+SERVER_ALIVE_COUNT_MAX="${TG_YOOMONEY_TUNNEL_SERVER_ALIVE_COUNT_MAX:-2}"
+CONNECT_GRACE="${TG_YOOMONEY_TUNNEL_CONNECT_GRACE:-2}"
 ATTEMPT="0"
 
 if [ -z "$HOST" ]; then
@@ -76,8 +80,9 @@ case "$SSH_VERSION" in
 	*)
 		set -- "$@" \
 			-o ExitOnForwardFailure=yes \
-			-o ServerAliveInterval=30 \
-			-o ServerAliveCountMax=3 \
+			-o ServerAliveInterval="$SERVER_ALIVE_INTERVAL" \
+			-o ServerAliveCountMax="$SERVER_ALIVE_COUNT_MAX" \
+			-o TCPKeepAlive=yes \
 			-o BatchMode=yes
 		if [ "$ACCEPT_HOSTKEY" = "1" ]; then
 			set -- "$@" -o StrictHostKeyChecking=accept-new
@@ -103,10 +108,15 @@ while true; do
 	set +e
 	"$@" &
 	SSH_PID="$!"
-	sleep 2
+	sleep "$CONNECT_GRACE"
 
 	if kill -0 "$SSH_PID" 2>/dev/null; then
 		write_status "active" "Reverse SSH tunnel is connected"
+		while kill -0 "$SSH_PID" 2>/dev/null; do
+			sleep "$HEARTBEAT_INTERVAL"
+			kill -0 "$SSH_PID" 2>/dev/null || break
+			write_status "active" "Reverse SSH tunnel heartbeat OK"
+		done
 		wait "$SSH_PID"
 		EXIT_CODE="$?"
 		write_status "retrying" "SSH tunnel disconnected with exit code ${EXIT_CODE}"
