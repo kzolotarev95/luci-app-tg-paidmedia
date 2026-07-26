@@ -22,6 +22,37 @@
   <img alt="YooMoney" src="https://img.shields.io/badge/YooMoney-ready-FCC521?style=for-the-badge">
 </p>
 
+## Галерея
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <img src="./assets/screenshots/paid-media-feed.jpg" alt="Лента платного контента в Telegram" width="92%" />
+      <br />
+      <sub>Лента платного контента с предпросмотром, размытием и оплатой в Stars</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="./assets/screenshots/catalog-and-menu.jpg" alt="Каталог и меню бота" width="92%" />
+      <br />
+      <sub>Каталог товаров, быстрые действия и меню администратора прямо в Telegram</sub>
+    </td>
+  </tr>
+</table>
+
+## Содержание
+
+- [Зачем нужен этот проект](#зачем-нужен-этот-проект)
+- [Что вы получаете](#что-вы-получаете)
+- [Быстрая установка](#быстрая-установка)
+- [Первый запуск за 5 минут](#первый-запуск-за-5-минут)
+- [Платежи](#платежи)
+- [Что дает LuCI](#что-дает-luci)
+- [Команды администратора](#команды-администратора)
+- [Структура проекта](#структура-проекта)
+- [Для кого это](#для-кого-это)
+- [Удаление](#удаление)
+- [Лицензия](#лицензия)
+
 ## Зачем нужен этот проект
 
 `TG Paid Media` создан для тех, кто хочет поднять self-hosted витрину платного контента в Telegram без отдельной VPS-панели, тяжелой CMS или самописного backend. Проект объединяет runtime бота и интерфейс LuCI в один пакет, удобный для OpenWrt.
@@ -121,7 +152,10 @@ wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/
 luci-app-tg-paidmedia/
 |-- README.md
 |-- assets/
-|   `-- bot-home-header.jpg
+|   |-- bot-home-header.jpg
+|   `-- screenshots/
+|       |-- catalog-and-menu.jpg
+|       `-- paid-media-feed.jpg
 |-- openwrt/
 |   |-- install.sh
 |   `-- uninstall.sh
