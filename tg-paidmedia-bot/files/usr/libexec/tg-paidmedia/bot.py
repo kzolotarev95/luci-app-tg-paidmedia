@@ -1735,6 +1735,28 @@ class TelegramPaidMediaBot:
             payload["disable_web_page_preview"] = bool(disable_web_page_preview)
         return self.api_call("sendMessage", payload)
 
+    def edit_message_text(
+        self,
+        chat_id,
+        message_id,
+        text,
+        reply_markup=None,
+        parse_mode=None,
+        disable_web_page_preview=None,
+    ):
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "text": text,
+        }
+        if reply_markup:
+            payload["reply_markup"] = reply_markup
+        if parse_mode:
+            payload["parse_mode"] = parse_mode
+        if disable_web_page_preview is not None:
+            payload["disable_web_page_preview"] = bool(disable_web_page_preview)
+        return self.api_call("editMessageText", payload)
+
     def menu_labels(self):
         return {
             "catalog": "📚 Каталог",
@@ -2993,25 +3015,46 @@ class TelegramPaidMediaBot:
     _legacy_handle_callback_query = handle_callback_query
     _legacy_handle_purchase_update = handle_purchase_update
 
-    def build_catalog_text(self, include_admin_hint=False):
+    def get_catalog_page(self, page, per_page=5):
+        items = list(self.catalog.get("items") or [])
+        total_pages = max(1, (len(items) + per_page - 1) // per_page)
+
+        try:
+            page = int(page)
+        except (TypeError, ValueError):
+            page = 0
+
+        page = max(0, min(page, total_pages - 1))
+        start = page * per_page
+        end = start + per_page
+        return page, total_pages, items[start:end]
+
+    def build_catalog_text(self, include_admin_hint=False, page=0):
         lines = [self.bot_title, "", self.welcome_text, ""]
 
         if not self.catalog["items"]:
             lines.append("Пока нет опубликованных товаров.")
         else:
-            lines.append("Выберите товар ниже.")
+            page, total_pages, page_items = self.get_catalog_page(page)
+            lines.append("Доступные товары: страница {0} из {1}".format(page + 1, total_pages))
+            lines.append("")
+            for item in page_items:
+                lines.append(self.build_catalog_item_caption(item, body_limit=180))
+                lines.append("")
 
         if self.catalog["items"]:
-            lines.extend(["", "Полное медиа откроется только после оплаты."])
+            if lines[-1] == "":
+                lines.pop()
+            lines.extend(["", "Показано 5 товаров на странице. Нажмите кнопку под нужным товаром."])
 
         if include_admin_hint and self.admin_ids:
             lines.extend(["", "Команды админа: /admin"])
 
         return "\n".join(lines)
 
-    def build_catalog_item_caption(self, item):
+    def build_catalog_item_caption(self, item, body_limit=240):
         media_type = "Фото" if item["kind"] == "photo" else "Видео"
-        body = safe_caption(item.get("caption") or item.get("title") or "").strip()
+        body = truncate_text(safe_caption(item.get("caption") or item.get("title") or "").strip(), body_limit)
         price_parts = ["⭐ {0}".format(item["price"])]
         rub_price = self.item_rub_price(item)
 
@@ -3038,11 +3081,35 @@ class TelegramPaidMediaBot:
         lines.extend(["", "🔒 Медиа откроется только после оплаты.", "", " / ".join(price_parts)])
         return safe_caption("\n".join(lines))
 
-    def build_catalog_keyboard(self):
+    def build_catalog_keyboard(self, page=0):
+        page, total_pages, page_items = self.get_catalog_page(page)
         rows = []
-        for item in self.catalog["items"]:
+        for item in page_items:
             row = self.build_item_purchase_buttons(item)
             rows.append(row)
+
+        if total_pages > 1:
+            nav_row = []
+            nav_row.append(
+                {
+                    "text": "⬅️ Назад" if page > 0 else "·",
+                    "callback_data": "catalogpage:{0}".format(page - 1) if page > 0 else "catalognoop",
+                }
+            )
+            nav_row.append(
+                {
+                    "text": "{0}/{1}".format(page + 1, total_pages),
+                    "callback_data": "catalognoop",
+                }
+            )
+            nav_row.append(
+                {
+                    "text": "Вперёд ➡️" if page + 1 < total_pages else "·",
+                    "callback_data": "catalogpage:{0}".format(page + 1) if page + 1 < total_pages else "catalognoop",
+                }
+            )
+            rows.append(nav_row)
+
         return {"inline_keyboard": rows} if rows else None
 
     def build_item_purchase_buttons(self, item):
@@ -3151,15 +3218,28 @@ class TelegramPaidMediaBot:
             )
         return {"inline_keyboard": rows}
 
-    def send_catalog(self, chat_id, user_id=None):
-        self.send_message(
-            chat_id,
-            self.build_catalog_text(include_admin_hint=self.is_admin(user_id)),
+    def send_catalog(self, chat_id, user_id=None, page=0, edit_message_id=None):
+        text = self.build_catalog_text(
+            include_admin_hint=self.is_admin(user_id),
+            page=page,
         )
-        for item in self.catalog["items"]:
-            caption = self.build_catalog_item_caption(item)
-            keyboard = self.build_item_purchase_keyboard(item)
-            self.send_message(chat_id, caption, reply_markup=keyboard)
+        keyboard = self.build_catalog_keyboard(page=page)
+
+        if edit_message_id is not None:
+            return self.edit_message_text(
+                chat_id,
+                edit_message_id,
+                text,
+                reply_markup=keyboard,
+                disable_web_page_preview=True,
+            )
+
+        return self.send_message(
+            chat_id,
+            text,
+            reply_markup=keyboard,
+            disable_web_page_preview=True,
+        )
 
     def send_admin_items(self, chat_id):
         self.send_message(
@@ -3420,7 +3500,29 @@ class TelegramPaidMediaBot:
         callback_id = query.get("id")
         from_user = query.get("from", {})
         chat_id = from_user.get("id")
-        message_chat_id = query.get("message", {}).get("chat", {}).get("id") or chat_id
+        message = query.get("message", {}) or {}
+        message_chat_id = message.get("chat", {}).get("id") or chat_id
+        message_id = message.get("message_id")
+
+        if data == "catalognoop":
+            self.answer_callback(callback_id)
+            return
+
+        if data.startswith("catalogpage:"):
+            try:
+                page = int(data.split(":", 1)[1])
+            except ValueError:
+                self.answer_callback(callback_id, "Некорректная страница.", show_alert=True)
+                return
+
+            self.answer_callback(callback_id)
+            self.send_catalog(
+                message_chat_id,
+                user_id=from_user.get("id"),
+                page=page,
+                edit_message_id=message_id,
+            )
+            return
 
         if data.startswith("buyrub:"):
             try:
