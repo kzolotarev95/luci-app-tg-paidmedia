@@ -2396,8 +2396,7 @@ class TelegramPaidMediaBot:
         if self.is_menu_button(text, "back"):
             self.clear_pending_action(chat_id)
             self.clear_pending_upload(chat_id)
-            self.send_with_main_keyboard(chat_id, user_id, "")
-            self.send_catalog(chat_id, user_id=user_id)
+            self.send_with_main_keyboard(chat_id, user_id, self.build_home_text())
             return True
 
         if self.is_menu_button(text, "cancel"):
@@ -3029,6 +3028,12 @@ class TelegramPaidMediaBot:
         end = start + per_page
         return page, total_pages, items[start:end]
 
+    def build_home_text(self):
+        return "{0}\n{1}".format(
+            self.bot_title.strip(),
+            self.welcome_text.strip(),
+        ).strip()
+
     def build_catalog_text(self, include_admin_hint=False, page=0):
         lines = [self.bot_title, "", self.welcome_text, ""]
 
@@ -3659,8 +3664,11 @@ class TelegramPaidMediaBot:
         if not command:
             return
 
-        if command in {"/start", "/catalog"}:
-            self.send_with_main_keyboard(chat_id, user_id, "")
+        if command == "/start":
+            self.send_with_main_keyboard(chat_id, user_id, self.build_home_text())
+            return
+
+        if command == "/catalog":
             self.send_catalog(chat_id, user_id=user_id)
             return
 
@@ -3701,8 +3709,7 @@ class TelegramPaidMediaBot:
             return
 
         if command == "/help":
-            self.send_with_main_keyboard(chat_id, user_id, "")
-            self.send_catalog(chat_id, user_id=user_id)
+            self.send_with_main_keyboard(chat_id, user_id, self.build_home_text())
             return
 
         self.send_with_main_keyboard(
