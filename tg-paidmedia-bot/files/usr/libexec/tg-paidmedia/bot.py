@@ -915,6 +915,7 @@ class TelegramPaidMediaBot:
                 "СБП / Platega",
                 user_id=order.get("user_id"),
                 user_name=order.get("user_name", ""),
+                user_username=order.get("user_username", ""),
                 item=item,
                 amount_text="{0} RUB".format(
                     self.format_rub_amount(order.get("amount_rub", 0))
@@ -1089,6 +1090,7 @@ class TelegramPaidMediaBot:
         payment_method,
         user_id=None,
         user_name="",
+        user_username="",
         item=None,
         amount_text="",
         order_id=None,
@@ -1100,6 +1102,7 @@ class TelegramPaidMediaBot:
                 "payment_method": payment_method,
                 "user_id": user_id,
                 "user_name": user_name,
+                "user_username": user_username,
                 "item_id": item.get("id") if item else None,
                 "item_title": item.get("title") if item else "",
                 "amount_text": amount_text,
@@ -2254,6 +2257,7 @@ class TelegramPaidMediaBot:
             "Telegram Stars",
             user_id=purchase_info.get("user_id"),
             user_name=purchase_info.get("user_name", ""),
+            user_username=purchase_info.get("user_username", ""),
             item=item,
             amount_text=(
                 "{0} Stars".format(item.get("price"))
@@ -2589,16 +2593,45 @@ class TelegramPaidMediaBot:
 
         lines = ["Recent purchases:"]
         for entry in items:
+            safe_time = html.escape(str(entry.get("received_at", "-")))
+            safe_method = html.escape(str(entry.get("payment_method", "-")))
+            safe_item_id = html.escape(str(entry.get("item_id") or "-"))
+            safe_amount = html.escape(str(entry.get("amount_text") or "-"))
+            display_name = str(
+                entry.get("user_name")
+                or ("@" + str(entry.get("user_username")) if entry.get("user_username") else "")
+                or entry.get("user_id")
+                or "-"
+            )
+            safe_name = html.escape(display_name)
+            user_id = entry.get("user_id")
+            user_username = str(entry.get("user_username") or "").lstrip("@")
+            profile_link = ""
+            if user_username:
+                profile_link = "https://t.me/{0}".format(
+                    urllib.parse.quote(user_username)
+                )
+            elif user_id:
+                profile_link = "tg://user?id={0}".format(int(user_id))
+
+            if profile_link:
+                buyer_value = '<a href="{0}">{1}</a>'.format(
+                    html.escape(profile_link, quote=True),
+                    safe_name,
+                )
+            else:
+                buyer_value = safe_name
+
             lines.append(
                 "{0} | {1} | #{2} | {3} | {4}".format(
-                    entry.get("received_at", "-"),
-                    entry.get("payment_method", "-"),
-                    entry.get("item_id") or "-",
-                    entry.get("amount_text") or "-",
-                    entry.get("user_name") or entry.get("user_id") or "-",
+                    safe_time,
+                    safe_method,
+                    safe_item_id,
+                    safe_amount,
+                    buyer_value,
                 )
             )
-        self.send_message(chat_id, "\n".join(lines))
+        self.send_message(chat_id, "\n".join(lines), parse_mode="HTML")
 
     def handle_admin_command(self, message, command, args):
         chat_id = message["chat"]["id"]
