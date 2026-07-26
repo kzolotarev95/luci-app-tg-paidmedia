@@ -167,12 +167,82 @@ return view.extend({
 				padding: 1.5rem 1.55rem 1.6rem;
 				border: 1px solid var(--tg-border-strong);
 				border-radius: 30px;
+				display: flex;
+				align-items: center;
 				background:
 					radial-gradient(circle at top right, rgba(99, 211, 255, 0.22), transparent 0 26%),
 					radial-gradient(circle at bottom left, rgba(255, 177, 84, 0.14), transparent 0 28%),
 					linear-gradient(180deg, rgba(22, 27, 44, 0.82), rgba(12, 15, 25, 0.88));
 				backdrop-filter: blur(24px);
 				box-shadow: var(--tg-shadow);
+			}
+
+			.tg-paidmedia-logo {
+				display: inline-flex;
+				align-items: center;
+				gap: 1rem;
+			}
+
+			.tg-paidmedia-logo-mark {
+				position: relative;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 4.1rem;
+				height: 4.1rem;
+				border-radius: 1.25rem;
+				background:
+					radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.22), transparent 0 34%),
+					linear-gradient(145deg, rgba(103, 215, 255, 0.95), rgba(41, 119, 228, 0.92));
+				box-shadow:
+					0 16px 34px rgba(34, 110, 216, 0.34),
+					inset 0 1px 0 rgba(255, 255, 255, 0.24);
+			}
+
+			.tg-paidmedia-logo-mark::before {
+				content: "TG";
+				color: #ffffff;
+				font-size: 1.22rem;
+				font-weight: 900;
+				letter-spacing: .08em;
+				text-shadow: 0 8px 18px rgba(5, 20, 48, 0.34);
+			}
+
+			.tg-paidmedia-logo-mark::after {
+				content: "";
+				position: absolute;
+				right: -.24rem;
+				bottom: -.24rem;
+				width: 1.1rem;
+				height: 1.1rem;
+				border: 2px solid rgba(9, 13, 24, 0.78);
+				border-radius: 999px;
+				background: linear-gradient(180deg, rgba(255, 198, 84, 1), rgba(255, 148, 41, 1));
+				box-shadow: 0 8px 18px rgba(255, 166, 51, 0.24);
+			}
+
+			.tg-paidmedia-logo-wordmark {
+				display: flex;
+				flex-direction: column;
+				gap: .15rem;
+			}
+
+			.tg-paidmedia-logo-title {
+				margin: 0;
+				color: var(--tg-text);
+				font-size: 1.9rem;
+				font-weight: 850;
+				line-height: 1.1;
+				letter-spacing: .01em;
+			}
+
+			.tg-paidmedia-logo-subtitle {
+				margin: 0;
+				color: var(--tg-text-soft);
+				font-size: .92rem;
+				font-weight: 650;
+				letter-spacing: .1em;
+				text-transform: uppercase;
 			}
 
 			.tg-paidmedia-hero-topline {
@@ -369,6 +439,10 @@ return view.extend({
 				overflow: hidden;
 			}
 
+			.tg-paidmedia-payments-panel {
+				overflow: hidden;
+			}
+
 			.tg-paidmedia-log-toolbar {
 				display: flex;
 				flex-wrap: wrap;
@@ -376,6 +450,12 @@ return view.extend({
 			}
 
 			.tg-paidmedia-info-toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .75rem;
+			}
+
+			.tg-paidmedia-payments-toolbar {
 				display: flex;
 				flex-wrap: wrap;
 				gap: .75rem;
@@ -404,6 +484,12 @@ return view.extend({
 				color: #fff1c5;
 			}
 
+			.tg-paidmedia-payments-toggle {
+				border-color: rgba(103, 215, 255, 0.3);
+				background: linear-gradient(180deg, rgba(37, 92, 137, 0.92), rgba(25, 59, 97, 0.94));
+				color: #e8f7ff;
+			}
+
 			.tg-paidmedia-log-body {
 				display: block;
 			}
@@ -412,11 +498,19 @@ return view.extend({
 				display: block;
 			}
 
+			.tg-paidmedia-payments-body {
+				display: block;
+			}
+
 			.tg-paidmedia-log-panel.is-collapsed .tg-paidmedia-log-body {
 				display: none;
 			}
 
 			.tg-paidmedia-info-panel.is-collapsed .tg-paidmedia-info-body {
+				display: none;
+			}
+
+			.tg-paidmedia-payments-panel.is-collapsed .tg-paidmedia-payments-body {
 				display: none;
 			}
 
@@ -807,6 +901,123 @@ return view.extend({
 		return m.render();
 	},
 
+	renderBotForm: function() {
+		var m, s, o;
+
+		m = new form.Map('tg-paidmedia');
+
+		s = m.section(form.NamedSection, 'main', 'bot', '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0431\u043e\u0442\u0430');
+
+		o = s.option(form.Flag, 'enabled', '\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0441\u0435\u0440\u0432\u0438\u0441');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'token', '\u0422\u043e\u043a\u0435\u043d \u0431\u043e\u0442\u0430');
+		o.password = true;
+		o.rmempty = false;
+		o.placeholder = '123456:ABCDEF';
+
+		o = s.option(form.DynamicList, 'admin_ids', 'Telegram ID \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u043e\u0432');
+		o.datatype = 'uinteger';
+		o.placeholder = '123456789';
+
+		o = s.option(form.Value, 'bot_title', '\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'welcome_text', '\u041f\u0440\u0438\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439 \u0442\u0435\u043a\u0441\u0442');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'poll_timeout', '\u0422\u0430\u0439\u043c\u0430\u0443\u0442 long polling (\u0441\u0435\u043a\u0443\u043d\u0434\u044b)');
+		o.datatype = 'uinteger';
+		o.placeholder = '25';
+		o.rmempty = false;
+
+		o = s.option(form.Flag, 'drop_pending', '\u0421\u0431\u0440\u0430\u0441\u044b\u0432\u0430\u0442\u044c \u043d\u0430\u043a\u043e\u043f\u043b\u0435\u043d\u043d\u044b\u0435 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f Telegram \u043f\u0440\u0438 \u0441\u0442\u0430\u0440\u0442\u0435');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'catalog_path', '\u041f\u0443\u0442\u044c \u043a \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0443');
+		o.rmempty = false;
+		o.placeholder = '/etc/tg-paidmedia/catalog.json';
+
+		o = s.option(form.Value, 'data_dir', '\u041a\u0430\u0442\u0430\u043b\u043e\u0433 \u0434\u0430\u043d\u043d\u044b\u0445');
+		o.rmempty = false;
+		o.placeholder = '/var/lib/tg-paidmedia';
+
+		o = s.option(form.Value, 'state_path', '\u041f\u0443\u0442\u044c \u043a \u0444\u0430\u0439\u043b\u0443 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f');
+		o.rmempty = false;
+		o.placeholder = '/var/lib/tg-paidmedia/state.json';
+
+		o = s.option(form.Value, 'status_path', '\u041f\u0443\u0442\u044c \u043a \u0444\u0430\u0439\u043b\u0443 \u0441\u0442\u0430\u0442\u0443\u0441\u0430');
+		o.rmempty = false;
+		o.placeholder = '/var/run/tg-paidmedia/status.json';
+
+		return m.render();
+	},
+
+	renderPaymentsForm: function() {
+		var m, s, o;
+
+		m = new form.Map('tg-paidmedia');
+
+		s = m.section(form.NamedSection, 'main', 'bot', 'Platega / \u0421\u0411\u041f');
+
+		o = s.option(form.Flag, 'platega_enabled', 'Включить Platega / СБП');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'platega_base_url', 'Базовый URL Platega');
+		o.rmempty = true;
+		o.placeholder = 'https://app.platega.io';
+
+		o = s.option(form.Value, 'platega_merchant_id', 'ID мерчанта Platega');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_secret_key', 'Секретный ключ Platega');
+		o.password = true;
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_callback_url', 'URL callback для Platega');
+		o.rmempty = true;
+		o.placeholder = 'https://example.com/platega/webhook';
+
+		o = s.option(form.Value, 'platega_success_url', 'URL успешного редиректа');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_fail_url', 'URL редиректа при ошибке');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_redirect_url', 'URL редиректа по умолчанию');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'platega_webhook_host', 'Хост прослушивания webhook');
+		o.rmempty = true;
+		o.placeholder = '0.0.0.0';
+
+		o = s.option(form.Value, 'platega_webhook_port', 'Порт прослушивания webhook');
+		o.datatype = 'port';
+		o.rmempty = true;
+		o.placeholder = '8099';
+
+		o = s.option(form.Value, 'platega_webhook_path', 'Путь webhook');
+		o.rmempty = true;
+		o.placeholder = '/platega/webhook';
+
+		o = s.option(form.Value, 'platega_status_poll_interval', 'Интервал опроса статуса СБП (секунды)');
+		o.datatype = 'uinteger';
+		o.rmempty = true;
+		o.placeholder = '20';
+
+		o = s.option(form.Value, 'platega_status_timeout', 'Таймаут ожидания статуса СБП (секунды)');
+		o.datatype = 'uinteger';
+		o.rmempty = true;
+		o.placeholder = '900';
+
+		o = s.option(form.Value, 'platega_http_timeout', 'HTTP-таймаут Platega (секунды)');
+		o.datatype = 'uinteger';
+		o.rmempty = true;
+		o.placeholder = '25';
+
+		return m.render();
+	},
+
 	extractServiceRunning: function(serviceStatus) {
 		var root = serviceStatus['tg-paidmedia'] || serviceStatus || {};
 		var instances = root.instances || {};
@@ -913,6 +1124,11 @@ return view.extend({
 	toggleInfoPanel: function(infoSection, toggleButton) {
 		var collapsed = infoSection.classList.toggle('is-collapsed');
 		dom.content(toggleButton, [ collapsed ? '\u2B50 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' : '\u2B50 \u0421\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
+	},
+
+	togglePaymentsPanel: function(paymentsSection, toggleButton) {
+		var collapsed = paymentsSection.classList.toggle('is-collapsed');
+		dom.content(toggleButton, [ collapsed ? '\uD83D\uDCB3 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0441\u0438\u0441\u0442\u0435\u043c\u044B' : '\uD83D\uDCB3 \u0421\u043A\u0440\u044B\u0442\u044C \u0441\u0438\u0441\u0442\u0435\u043c\u044B' ]);
 	},
 
 	buildWithdrawalInfoSection: function() {
@@ -1110,6 +1326,12 @@ return view.extend({
 				this.buildWithdrawalInfoSection()
 			])
 		]);
+		var paymentsToggle = E('button', {
+			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-payments-toggle',
+			'click': ui.createHandlerFn(this, function() {
+				this.togglePaymentsPanel(paymentsSection, paymentsToggle);
+			})
+		}, [ '\uD83D\uDCB3 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0441\u0438\u0441\u0442\u0435\u043c\u044B' ]);
 		var logToggle = E('button', {
 			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-log-toggle',
 			'click': ui.createHandlerFn(this, function() {
@@ -1144,10 +1366,30 @@ return view.extend({
 				logTarget
 			])
 		]);
+		var paymentsBody = E('div', { 'class': 'tg-paidmedia-payments-body' });
+		var paymentsSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-payments-panel is-collapsed' }, [
+			E('div', { 'class': 'tg-paidmedia-section-head' }, [
+				E('div', {}, [
+					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u041F\u043B\u0430\u0442\u0435\u0436\u043D\u044B\u0435 \u0441\u0438\u0441\u0442\u0435\u043C\u044B' ]),
+					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0431\u043B\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0441\u0442\u0440\u043E\u0438\u0442\u044C Platega \u0438 \u043F\u043E\u0437\u0436\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u044F\u0442\u044C \u0434\u0440\u0443\u0433\u0438\u0435 \u0441\u043F\u043E\u0441\u043E\u0431\u044B \u043E\u043F\u043B\u0430\u0442\u044B.' ])
+				]),
+				E('div', { 'class': 'tg-paidmedia-payments-toolbar' }, [
+					paymentsToggle
+				])
+			]),
+			paymentsBody
+		]);
 
-		return this.renderForm().then(function(formNode) {
+		return Promise.all([
+			this.renderBotForm(),
+			this.renderPaymentsForm()
+		]).then(function(renderedForms) {
+			var botFormNode = renderedForms[0];
+			var paymentsFormNode = renderedForms[1];
+
 			this.updatePanels(statusTarget, logTarget, data);
 			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget));
+			dom.content(paymentsBody, [ paymentsFormNode ]);
 
 			return E('div', { 'class': 'tg-paidmedia-page' }, [
 				this.renderStyles(),
@@ -1155,13 +1397,19 @@ return view.extend({
 					E('div', { 'class': 'tg-paidmedia-orb tg-paidmedia-orb-one' }),
 					E('div', { 'class': 'tg-paidmedia-orb tg-paidmedia-orb-two' }),
 					E('div', { 'class': 'tg-paidmedia-hero' }, [
-						E('h2', { 'class': 'tg-paidmedia-title' }, [ '\u0412\u044B\u0432\u043E\u0434 \u0437\u0432\u0435\u0437\u0434' ]),
-						E('p', { 'class': 'tg-paidmedia-lead' }, [ '\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0431\u043B\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C, \u043A\u0430\u043A Telegram Stars \u0432\u044B\u0432\u043E\u0434\u044F\u0442\u0441\u044F \u0443 \u0431\u043E\u0442\u0430.' ])
+						E('div', { 'class': 'tg-paidmedia-logo' }, [
+							E('div', { 'class': 'tg-paidmedia-logo-mark' }),
+							E('div', { 'class': 'tg-paidmedia-logo-wordmark' }, [
+								E('p', { 'class': 'tg-paidmedia-logo-title' }, [ 'TG Paid Media' ]),
+								E('p', { 'class': 'tg-paidmedia-logo-subtitle' }, [ 'Telegram Stars' ])
+							])
+						])
 					]),
 					statusTarget,
 					infoSection,
 					logSection,
-					E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-form-wrap' }, [ formNode ])
+					E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-form-wrap' }, [ botFormNode ]),
+					paymentsSection
 				])
 			]);
 		}.bind(this));
