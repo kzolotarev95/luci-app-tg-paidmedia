@@ -1,7 +1,9 @@
 # TG Paid Media для OpenWrt
 
 <p align="center">
-  <img src="./assets/bot-home-header.jpg" alt="TG Paid Media" width="100%" />
+ 
+<img width="1920" height="1357" alt="999" src="https://github.com/user-attachments/assets/cfcc76bb-605b-48f7-8d01-b53627457002" />
+
 </p>
 
 <p align="center">
