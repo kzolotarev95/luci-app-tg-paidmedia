@@ -1736,7 +1736,7 @@ class TelegramPaidMediaBot:
             "transactions": "📈 Операции Stars",
             "sales": "🧾 Последние покупки",
             "admin_help": "🛠 Помощь админа",
-            "back": "⬅️ Назад",
+            "back": "🏠 На главную",
             "cancel": "❌ Отмена",
         }
 
@@ -1752,7 +1752,7 @@ class TelegramPaidMediaBot:
             "transactions": {"Операции Stars"},
             "sales": {"Последние покупки"},
             "admin_help": {"Помощь админа"},
-            "back": {"Назад"},
+            "back": {"Назад", "На главную"},
             "cancel": {"Отмена"},
         }
         return text in {labels[key], *legacy.get(key, set())}
@@ -2364,11 +2364,8 @@ class TelegramPaidMediaBot:
         if self.is_menu_button(text, "back"):
             self.clear_pending_action(chat_id)
             self.clear_pending_upload(chat_id)
-            self.send_with_main_keyboard(
-                chat_id,
-                user_id,
-                "Главное меню открыто. Выберите нужное действие кнопками ниже.",
-            )
+            self.send_with_main_keyboard(chat_id, user_id, "")
+            self.send_catalog(chat_id, user_id=user_id)
             return True
 
         if self.is_menu_button(text, "cancel"):
