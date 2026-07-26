@@ -18,6 +18,9 @@ start_service() {
 	local platega_callback_url platega_success_url platega_fail_url platega_redirect_url
 	local platega_webhook_host platega_webhook_port platega_webhook_path
 	local platega_status_poll_interval platega_status_timeout platega_http_timeout
+	local yoomoney_enabled yoomoney_wallet yoomoney_notification_secret
+	local yoomoney_callback_url yoomoney_success_url yoomoney_webhook_host
+	local yoomoney_webhook_port yoomoney_webhook_path yoomoney_payment_path
 
 	config_load "$CONFIG"
 	config_get_bool enabled "$SECTION" enabled 0
@@ -51,6 +54,15 @@ start_service() {
 	config_get platega_status_poll_interval "$SECTION" platega_status_poll_interval "20"
 	config_get platega_status_timeout "$SECTION" platega_status_timeout "900"
 	config_get platega_http_timeout "$SECTION" platega_http_timeout "25"
+	config_get_bool yoomoney_enabled "$SECTION" yoomoney_enabled 0
+	config_get yoomoney_wallet "$SECTION" yoomoney_wallet ""
+	config_get yoomoney_notification_secret "$SECTION" yoomoney_notification_secret ""
+	config_get yoomoney_callback_url "$SECTION" yoomoney_callback_url ""
+	config_get yoomoney_success_url "$SECTION" yoomoney_success_url ""
+	config_get yoomoney_webhook_host "$SECTION" yoomoney_webhook_host "0.0.0.0"
+	config_get yoomoney_webhook_port "$SECTION" yoomoney_webhook_port "8100"
+	config_get yoomoney_webhook_path "$SECTION" yoomoney_webhook_path "/yoomoney/webhook"
+	config_get yoomoney_payment_path "$SECTION" yoomoney_payment_path "/yoomoney/pay"
 	TG_ADMIN_IDS=""
 	config_list_foreach "$SECTION" admin_ids append_admin_id
 
@@ -82,6 +94,15 @@ start_service() {
 	procd_append_param env TG_PLATEGA_STATUS_POLL_INTERVAL="$platega_status_poll_interval"
 	procd_append_param env TG_PLATEGA_STATUS_TIMEOUT="$platega_status_timeout"
 	procd_append_param env TG_PLATEGA_HTTP_TIMEOUT="$platega_http_timeout"
+	procd_append_param env TG_YOOMONEY_ENABLED="$yoomoney_enabled"
+	procd_append_param env TG_YOOMONEY_WALLET="$yoomoney_wallet"
+	procd_append_param env TG_YOOMONEY_NOTIFICATION_SECRET="$yoomoney_notification_secret"
+	procd_append_param env TG_YOOMONEY_CALLBACK_URL="$yoomoney_callback_url"
+	procd_append_param env TG_YOOMONEY_SUCCESS_URL="$yoomoney_success_url"
+	procd_append_param env TG_YOOMONEY_WEBHOOK_HOST="$yoomoney_webhook_host"
+	procd_append_param env TG_YOOMONEY_WEBHOOK_PORT="$yoomoney_webhook_port"
+	procd_append_param env TG_YOOMONEY_WEBHOOK_PATH="$yoomoney_webhook_path"
+	procd_append_param env TG_YOOMONEY_PAYMENT_PATH="$yoomoney_payment_path"
 	procd_set_param respawn 3600 5 5
 	procd_set_param stdout 1
 	procd_set_param stderr 1

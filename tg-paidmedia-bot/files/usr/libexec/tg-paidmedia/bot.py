@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import datetime
+import hashlib
+import hmac
 import html
 import http.client
 import http.server
@@ -257,6 +259,53 @@ class PlategaWebhookHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body_bytes)
 
 
+class YooMoneyWebhookHandler(http.server.BaseHTTPRequestHandler):
+    server_version = "TGPaidMediaYooMoney/1.0"
+
+    def log_message(self, format_value, *args):
+        LOG.info("yoomoney webhook: " + format_value, *args)
+
+    def do_GET(self):
+        bot = getattr(self.server, "bot", None)
+        if bot is None:
+            self.send_error(500, "Bot context is missing")
+            return
+
+        status_code, content_type, response_body = bot.handle_yoomoney_http_get(self.path)
+        body_bytes = response_body.encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body_bytes)))
+        self.end_headers()
+        self.wfile.write(body_bytes)
+
+    def do_POST(self):
+        bot = getattr(self.server, "bot", None)
+        if bot is None:
+            self.send_error(500, "Bot context is missing")
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            content_length = 0
+
+        body = self.rfile.read(max(content_length, 0))
+        payload = parse_callback_body(body)
+        status_code, response_payload = bot.handle_yoomoney_webhook(
+            self.path,
+            dict(self.headers.items()),
+            payload,
+        )
+
+        body_bytes = json.dumps(response_payload, ensure_ascii=True).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body_bytes)))
+        self.end_headers()
+        self.wfile.write(body_bytes)
+
+
 class TelegramPaidMediaBot:
     def __init__(self):
         self.token = os.environ.get("TG_BOT_TOKEN", "").strip()
@@ -326,6 +375,35 @@ class TelegramPaidMediaBot:
         self.platega_http_timeout = env_int("TG_PLATEGA_HTTP_TIMEOUT", 25)
         self._platega_server = None
         self._platega_server_thread = None
+        self.yoomoney_enabled = env_bool("TG_YOOMONEY_ENABLED", False)
+        self.yoomoney_wallet = os.environ.get("TG_YOOMONEY_WALLET", "").strip()
+        self.yoomoney_notification_secret = os.environ.get(
+            "TG_YOOMONEY_NOTIFICATION_SECRET", ""
+        ).strip()
+        self.yoomoney_callback_url = os.environ.get(
+            "TG_YOOMONEY_CALLBACK_URL", ""
+        ).strip()
+        self.yoomoney_success_url = os.environ.get(
+            "TG_YOOMONEY_SUCCESS_URL", ""
+        ).strip()
+        self.yoomoney_webhook_host = os.environ.get(
+            "TG_YOOMONEY_WEBHOOK_HOST", "0.0.0.0"
+        ).strip() or "0.0.0.0"
+        self.yoomoney_webhook_port = env_int("TG_YOOMONEY_WEBHOOK_PORT", 8100)
+        self.yoomoney_webhook_path = (
+            os.environ.get("TG_YOOMONEY_WEBHOOK_PATH", "/yoomoney/webhook").strip()
+            or "/yoomoney/webhook"
+        )
+        if not self.yoomoney_webhook_path.startswith("/"):
+            self.yoomoney_webhook_path = "/" + self.yoomoney_webhook_path
+        self.yoomoney_payment_path = (
+            os.environ.get("TG_YOOMONEY_PAYMENT_PATH", "/yoomoney/pay").strip()
+            or "/yoomoney/pay"
+        )
+        if not self.yoomoney_payment_path.startswith("/"):
+            self.yoomoney_payment_path = "/" + self.yoomoney_payment_path
+        self._yoomoney_server = None
+        self._yoomoney_server_thread = None
         self._orders_lock = threading.Lock()
 
         pathlib.Path(self.data_dir).mkdir(parents=True, exist_ok=True)
@@ -363,11 +441,15 @@ class TelegramPaidMediaBot:
         self.state["stats"].setdefault("stars_purchases", 0)
         self.state["stats"].setdefault("sbp_orders_created", 0)
         self.state["stats"].setdefault("sbp_orders_paid", 0)
+        self.state["stats"].setdefault("yoomoney_orders_created", 0)
+        self.state["stats"].setdefault("yoomoney_orders_paid", 0)
         self.state.setdefault("last_balance", {})
         self.state.setdefault("last_purchase", {})
         self.state.setdefault("recent_purchases", [])
         self.state.setdefault("last_platega_order", {})
         self.state.setdefault("last_platega_event", {})
+        self.state.setdefault("last_yoomoney_order", {})
+        self.state.setdefault("last_yoomoney_event", {})
         self.orders = load_json(self.orders_path, {"next_id": 1, "items": []})
         self.orders.setdefault("next_id", 1)
         self.orders.setdefault("items", [])
@@ -389,8 +471,12 @@ class TelegramPaidMediaBot:
             "last_balance": self.state.get("last_balance", {}),
             "last_platega_order": self.state.get("last_platega_order", {}),
             "last_platega_event": self.state.get("last_platega_event", {}),
+            "last_yoomoney_order": self.state.get("last_yoomoney_order", {}),
+            "last_yoomoney_event": self.state.get("last_yoomoney_event", {}),
             "platega_enabled": self.has_platega_credentials(),
             "platega_webhook_url": self.platega_callback_url,
+            "yoomoney_enabled": self.has_yoomoney_credentials(),
+            "yoomoney_webhook_url": self.yoomoney_callback_url,
             "stats": self.state.get("stats", {}),
         }
 
@@ -450,6 +536,7 @@ class TelegramPaidMediaBot:
             entry["item_id"] = item_id
             entry["chat_id"] = chat_id
             entry["user_id"] = user_id
+            entry["provider"] = str(entry.get("provider") or "platega").strip().lower()
             entry["status"] = str(entry.get("status") or "CREATED").strip().upper()
             entry["created_at"] = entry.get("created_at") or utc_now()
             entry["updated_at"] = entry.get("updated_at") or entry["created_at"]
@@ -526,8 +613,12 @@ class TelegramPaidMediaBot:
         self.status["last_purchase"] = self.state.get("last_purchase", {})
         self.status["last_platega_order"] = self.state.get("last_platega_order", {})
         self.status["last_platega_event"] = self.state.get("last_platega_event", {})
+        self.status["last_yoomoney_order"] = self.state.get("last_yoomoney_order", {})
+        self.status["last_yoomoney_event"] = self.state.get("last_yoomoney_event", {})
         self.status["platega_enabled"] = self.has_platega_credentials()
         self.status["platega_webhook_url"] = self.platega_callback_url
+        self.status["yoomoney_enabled"] = self.has_yoomoney_credentials()
+        self.status["yoomoney_webhook_url"] = self.yoomoney_callback_url
         atomic_write_json(self.status_path, self.status)
 
     def update_status(self, **kwargs):
@@ -635,6 +726,14 @@ class TelegramPaidMediaBot:
             and bool(self.platega_secret)
         )
 
+    def has_yoomoney_credentials(self):
+        return (
+            self.yoomoney_enabled
+            and bool(self.yoomoney_wallet)
+            and bool(self.yoomoney_notification_secret)
+            and bool(self.yoomoney_callback_url)
+        )
+
     def platega_headers(self):
         return {
             "Content-Type": "application/json",
@@ -666,6 +765,123 @@ class TelegramPaidMediaBot:
             raise RuntimeError("Platega HTTP error: {0}".format(details)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError("Platega connection error: {0}".format(exc)) from exc
+
+    def build_yoomoney_order_label(self, order_id):
+        return "tg-paidmedia-yoomoney:{0}".format(int(order_id))
+
+    def build_yoomoney_payment_page_url(self, order_id):
+        if not self.yoomoney_callback_url:
+            return ""
+
+        parsed = urllib.parse.urlparse(self.yoomoney_callback_url)
+        if not parsed.scheme or not parsed.netloc:
+            return ""
+
+        base_url = "{0}://{1}".format(parsed.scheme, parsed.netloc)
+        return "{0}{1}/{2}".format(
+            base_url,
+            self.yoomoney_payment_path.rstrip("/"),
+            int(order_id),
+        )
+
+    def build_yoomoney_payment_page(self, order):
+        item = self.get_item(order.get("item_id")) or {}
+        order_id = int(order.get("id"))
+        title = html.escape(item.get("title") or self.order_title(order))
+        amount_rub = self.format_rub_amount(order.get("amount_rub", 0))
+        label = html.escape(str(order.get("payment_label") or ""), quote=True)
+        receiver = html.escape(self.yoomoney_wallet, quote=True)
+        success_url = html.escape(self.yoomoney_success_url, quote=True)
+        targets = html.escape(
+            "Paid media #{0}: {1}".format(order.get("item_id"), item.get("title", "")),
+            quote=True,
+        )
+
+        success_input = ""
+        if self.yoomoney_success_url:
+            success_input = '<input type="hidden" name="successURL" value="{0}"/>'.format(
+                success_url
+            )
+
+        return """<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Оплата ЮMoney</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f5f7fb; color: #17212b; }}
+    .wrap {{ max-width: 560px; margin: 0 auto; padding: 24px 16px; }}
+    .card {{ background: #fff; border: 1px solid #d9e0ea; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(17, 24, 39, .06); }}
+    h1 {{ margin: 0 0 8px; font-size: 22px; }}
+    p {{ margin: 0 0 12px; line-height: 1.55; }}
+    .meta {{ color: #5b6777; font-size: 14px; }}
+    .actions {{ display: grid; gap: 12px; margin-top: 18px; }}
+    button {{ width: 100%; border: 0; border-radius: 12px; padding: 14px 16px; font-size: 16px; font-weight: 700; cursor: pointer; }}
+    .wallet {{ background: #ffe082; color: #1f2328; }}
+    .cardpay {{ background: #121722; color: #fff; }}
+    .note {{ margin-top: 16px; font-size: 13px; color: #5b6777; }}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Оплата через ЮMoney</h1>
+      <p><strong>Заказ #{0}</strong></p>
+      <p>{1}</p>
+      <p class="meta">Сумма к оплате: {2} RUB</p>
+      <p class="note">После подтверждения платежа бот автоматически отправит контент в Telegram.</p>
+      <div class="actions">
+        <form method="POST" action="https://yoomoney.ru/quickpay/confirm">
+          <input type="hidden" name="receiver" value="{3}"/>
+          <input type="hidden" name="label" value="{4}"/>
+          <input type="hidden" name="targets" value="{5}"/>
+          <input type="hidden" name="quickpay-form" value="button"/>
+          <input type="hidden" name="sum" value="{2}" data-type="number"/>
+          <input type="hidden" name="paymentType" value="PC"/>
+          {6}
+          <button type="submit" class="wallet">Оплатить из кошелька ЮMoney</button>
+        </form>
+        <form method="POST" action="https://yoomoney.ru/quickpay/confirm">
+          <input type="hidden" name="receiver" value="{3}"/>
+          <input type="hidden" name="label" value="{4}"/>
+          <input type="hidden" name="targets" value="{5}"/>
+          <input type="hidden" name="quickpay-form" value="button"/>
+          <input type="hidden" name="sum" value="{2}" data-type="number"/>
+          <input type="hidden" name="paymentType" value="AC"/>
+          {6}
+          <button type="submit" class="cardpay">Оплатить банковской картой</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+""".format(order_id, title, amount_rub, receiver, label, targets, success_input)
+
+    def validate_yoomoney_notification(self, payload):
+        signature = str(payload.get("sign") or "").strip().lower()
+        if not signature or not self.yoomoney_notification_secret:
+            return False
+
+        prepared = []
+        for key in sorted(payload.keys()):
+            if key == "sign":
+                continue
+            prepared.append(
+                "{0}={1}".format(
+                    key,
+                    urllib.parse.quote(str(payload.get(key, "")), safe="~"),
+                )
+            )
+
+        raw_message = "&".join(prepared).encode("utf-8")
+        expected = hmac.new(
+            self.yoomoney_notification_secret.encode("utf-8"),
+            raw_message,
+            hashlib.sha256,
+        ).hexdigest()
+        return hmac.compare_digest(expected, signature)
 
     def item_rub_price(self, item):
         try:
@@ -702,12 +918,16 @@ class TelegramPaidMediaBot:
         return None
 
     def touch_order(self, order, **kwargs):
+        provider = str(order.get("provider") or "platega").strip().lower()
+        state_key = "last_yoomoney_order" if provider == "yoomoney" else "last_platega_order"
+
         order.update(kwargs)
         order["updated_at"] = utc_now()
-        self.state["last_platega_order"] = {
+        self.state[state_key] = {
             "id": order.get("id"),
             "item_id": order.get("item_id"),
             "item_title": self.order_title(order),
+            "provider": provider,
             "status": order.get("status"),
             "delivery_state": order.get("delivery_state"),
             "amount_rub": order.get("amount_rub", 0),
@@ -716,7 +936,7 @@ class TelegramPaidMediaBot:
         }
         self.save_orders()
         self.save_state()
-        self.update_status(last_platega_order=self.state["last_platega_order"])
+        self.update_status(**{state_key: self.state[state_key]})
 
     def start_platega_webhook_server(self):
         if not self.has_platega_credentials() or self._platega_server is not None:
@@ -739,6 +959,29 @@ class TelegramPaidMediaBot:
             self.platega_webhook_host,
             self.platega_webhook_port,
             self.platega_webhook_path,
+        )
+
+    def start_yoomoney_webhook_server(self):
+        if not self.has_yoomoney_credentials() or self._yoomoney_server is not None:
+            return
+
+        server = http.server.ThreadingHTTPServer(
+            (self.yoomoney_webhook_host, self.yoomoney_webhook_port),
+            YooMoneyWebhookHandler,
+        )
+        server.bot = self
+        self._yoomoney_server = server
+        self._yoomoney_server_thread = threading.Thread(
+            target=server.serve_forever,
+            name="yoomoney-webhook",
+            daemon=True,
+        )
+        self._yoomoney_server_thread.start()
+        LOG.info(
+            "YooMoney webhook server is listening on %s:%s%s",
+            self.yoomoney_webhook_host,
+            self.yoomoney_webhook_port,
+            self.yoomoney_webhook_path,
         )
 
     def send_photo(self, chat_id, file_id, caption=""):
@@ -844,6 +1087,106 @@ class TelegramPaidMediaBot:
             )
 
         return order
+
+    def create_yoomoney_order(self, chat_id, user, item):
+        rub_price = self.item_rub_price(item)
+        if rub_price <= 0:
+            raise RuntimeError("RUB price is not configured for this item")
+        if not self.has_yoomoney_credentials():
+            raise RuntimeError("YooMoney is not configured")
+
+        with self._orders_lock:
+            local_order_id = int(self.orders["next_id"])
+            self.orders["next_id"] = local_order_id + 1
+
+            order = {
+                "id": local_order_id,
+                "provider": "yoomoney",
+                "item_id": int(item["id"]),
+                "chat_id": int(chat_id),
+                "user_id": int(user.get("id") or chat_id),
+                "user_name": compact_name(user),
+                "user_username": str(user.get("username") or ""),
+                "amount_rub": rub_price,
+                "status": "PENDING",
+                "delivery_state": "pending",
+                "created_at": utc_now(),
+                "updated_at": utc_now(),
+                "transaction_id": "",
+                "payment_url": "",
+                "payment_label": self.build_yoomoney_order_label(local_order_id),
+                "poll_next_at": 0,
+                "poll_until": 0,
+            }
+            order["payment_url"] = self.build_yoomoney_payment_page_url(local_order_id)
+            self.orders["items"].append(order)
+            self.state["stats"]["yoomoney_orders_created"] += 1
+            self.save_orders()
+            self.save_state()
+
+        self.touch_order(order)
+        return order
+
+    def find_order_by_label(self, payment_label):
+        payment_label = str(payment_label or "").strip()
+        if not payment_label:
+            return None
+
+        for entry in self.orders["items"]:
+            if str(entry.get("payment_label") or "").strip() == payment_label:
+                return entry
+        return None
+
+    def record_yoomoney_event(self, **kwargs):
+        self.state["last_yoomoney_event"] = kwargs
+        self.save_state()
+        self.update_status(last_yoomoney_event=self.state["last_yoomoney_event"])
+
+    def deliver_yoomoney_order(self, order):
+        item = self.get_item(order.get("item_id"))
+        if not item:
+            self.touch_order(order, delivery_state="missing_item")
+            return
+
+        if order.get("delivery_state") == "delivered":
+            return
+
+        try:
+            self.send_message(
+                order["chat_id"],
+                "YooMoney payment confirmed. Sending your content now.",
+            )
+            self.send_direct_item(order["chat_id"], item)
+            self.state["stats"]["yoomoney_orders_paid"] += 1
+            self.append_recent_purchase(
+                "ЮMoney",
+                user_id=order.get("user_id"),
+                user_name=order.get("user_name", ""),
+                user_username=order.get("user_username", ""),
+                item=item,
+                amount_text="{0} RUB".format(
+                    self.format_rub_amount(order.get("amount_rub", 0))
+                ),
+                order_id=order.get("id"),
+                received_at=utc_now(),
+            )
+            self.save_state()
+            self.touch_order(order, delivery_state="delivered")
+            self.notify_admin_purchase(
+                "ЮMoney",
+                user_id=order.get("user_id"),
+                user_name=order.get("user_name", ""),
+                user_username=order.get("user_username", ""),
+                item=item,
+                amount_text="{0} RUB".format(
+                    self.format_rub_amount(order.get("amount_rub", 0))
+                ),
+                order_id=order.get("id"),
+                received_at=order.get("updated_at") or utc_now(),
+            )
+        except Exception as exc:
+            LOG.exception("Unable to deliver YooMoney order %s", order.get("id"))
+            self.touch_order(order, delivery_state="delivery_error", delivery_error=str(exc))
 
     def fetch_platega_status(self, order):
         transaction_id = str(order.get("transaction_id") or "").strip()
@@ -1006,6 +1349,84 @@ class TelegramPaidMediaBot:
             return 200, {"ok": True}
 
         self.sync_platega_order(order, payload, source="webhook")
+        return 200, {"ok": True}
+
+    def handle_yoomoney_http_get(self, path):
+        parsed = urllib.parse.urlparse(path)
+        prefix = self.yoomoney_payment_path.rstrip("/") + "/"
+
+        if not parsed.path.startswith(prefix):
+            return 404, "text/plain; charset=utf-8", "Not found"
+
+        if not self.has_yoomoney_credentials():
+            return 503, "text/plain; charset=utf-8", "YooMoney is not configured"
+
+        raw_order_id = parsed.path[len(prefix):].strip().strip("/")
+        try:
+            order_id = int(raw_order_id)
+        except ValueError:
+            return 400, "text/plain; charset=utf-8", "Invalid order id"
+
+        order = self.find_order(order_id)
+        if order is None or str(order.get("provider") or "") != "yoomoney":
+            return 404, "text/plain; charset=utf-8", "Order not found"
+
+        return 200, "text/html; charset=utf-8", self.build_yoomoney_payment_page(order)
+
+    def handle_yoomoney_webhook(self, path, headers, payload):
+        if urllib.parse.urlparse(path).path != self.yoomoney_webhook_path:
+            return 404, {"ok": False, "error": "unknown path"}
+
+        if not self.has_yoomoney_credentials():
+            return 503, {"ok": False, "error": "yoomoney disabled"}
+
+        if not self.validate_yoomoney_notification(payload):
+            LOG.warning("Rejected YooMoney webhook because signature validation failed")
+            return 403, {"ok": False, "error": "forbidden"}
+
+        payment_label = str(payload.get("label") or "").strip()
+        order = self.find_order_by_label(payment_label)
+
+        if order is None:
+            self.record_yoomoney_event(
+                source="webhook",
+                status="UNKNOWN",
+                transaction_id=str(payload.get("operation_id") or ""),
+                label=payment_label,
+                received_at=utc_now(),
+                warning="order not found",
+            )
+            return 200, {"ok": True}
+
+        try:
+            charged_amount = round(float(payload.get("withdraw_amount") or 0), 2)
+        except (TypeError, ValueError):
+            charged_amount = 0.0
+
+        expected_amount = round(float(order.get("amount_rub") or 0), 2)
+        operation_id = str(payload.get("operation_id") or "").strip()
+
+        self.record_yoomoney_event(
+            source="webhook",
+            status="CONFIRMED" if charged_amount >= expected_amount else "UNDERPAID",
+            transaction_id=operation_id,
+            label=payment_label,
+            notification_type=str(payload.get("notification_type") or ""),
+            amount=str(payload.get("amount") or ""),
+            withdraw_amount=str(payload.get("withdraw_amount") or ""),
+            received_at=utc_now(),
+        )
+
+        if charged_amount < expected_amount:
+            self.touch_order(
+                order,
+                status="UNDERPAID",
+                transaction_id=operation_id or order.get("transaction_id", ""),
+            )
+            return 200, {"ok": False, "error": "amount mismatch"}
+
+        self.touch_order(order, status="CONFIRMED", transaction_id=operation_id)
+        self.deliver_yoomoney_order(order)
         return 200, {"ok": True}
 
     def get_item(self, item_id):
@@ -1244,6 +1665,7 @@ class TelegramPaidMediaBot:
         LOG.info("Setup step: setMyCommands")
         self.set_my_commands()
         self.start_platega_webhook_server()
+        self.start_yoomoney_webhook_server()
 
         if self.drop_pending:
             try:
@@ -2306,7 +2728,23 @@ class TelegramPaidMediaBot:
                 price_parts = ["{0} Stars".format(item["price"])]
                 rub_price = self.item_rub_price(item)
                 if rub_price > 0:
-                    price_parts.append("{0} RUB via SBP".format(self.format_rub_amount(rub_price)))
+                    rub_methods = []
+                    if self.has_platega_credentials():
+                        rub_methods.append("SBP")
+                    if self.has_yoomoney_credentials():
+                        rub_methods.append("YooMoney")
+
+                    if rub_methods:
+                        price_parts.append(
+                            "{0} RUB via {1}".format(
+                                self.format_rub_amount(rub_price),
+                                " / ".join(rub_methods),
+                            )
+                        )
+                    else:
+                        price_parts.append(
+                            "{0} RUB".format(self.format_rub_amount(rub_price))
+                        )
                 lines.append(
                     "#{0} | {1} | {2} | {3}".format(
                         item["id"], media_type, " / ".join(price_parts), item["title"]
@@ -2322,6 +2760,8 @@ class TelegramPaidMediaBot:
             )
             if self.has_platega_credentials():
                 lines.append("For SBP use /buyrub <id>.")
+            if self.has_yoomoney_credentials():
+                lines.append("For YooMoney use /buyyoomoney <id>.")
 
         if include_admin_hint and self.admin_ids:
             lines.extend(["", "Admin commands: /admin"])
@@ -2350,6 +2790,15 @@ class TelegramPaidMediaBot:
                         self.format_rub_amount(rub_price)
                     ),
                     "callback_data": "buyrub:{0}".format(item["id"]),
+                }
+            )
+        if rub_price > 0 and self.has_yoomoney_credentials():
+            row.append(
+                {
+                    "text": "Buy via YooMoney {0} RUB".format(
+                        self.format_rub_amount(rub_price)
+                    ),
+                    "callback_data": "buyyoomoney:{0}".format(item["id"]),
                 }
             )
         return row
@@ -2386,8 +2835,8 @@ class TelegramPaidMediaBot:
                 "",
                 "Publish: /publish <id>",
                 "Set Stars price: /setprice <id> <stars>",
-                "Set SBP price: /setrubprice <id> <rubles>",
-                "Recent SBP orders: /orders",
+                "Set RUB price: /setrubprice <id> <rubles>",
+                "Recent RUB orders: /orders",
             ]
         )
         return "\n".join(lines)
@@ -2462,12 +2911,13 @@ class TelegramPaidMediaBot:
                 "/items - show catalog items",
                 "/publish <id> - publish saved post to current chat",
                 "/setprice <id> <stars> - change Telegram Stars price",
-                "/setrubprice <id> <rubles> - change SBP price in RUB",
+                "/setrubprice <id> <rubles> - change RUB price for Platega and YooMoney",
                 "/settitle <id> <title> - change title",
                 "/setcaption <id> <text> - change caption",
                 "/delete <id> - delete item",
                 "/sales - recent purchases list",
-                "/orders - recent SBP orders",
+                "/orders - recent RUB orders",
+                "/buyyoomoney <id> - create YooMoney payment page",
                 "/balance - Telegram Stars balance",
                 "/transactions [count] - recent Stars operations",
                 "/withdraw - withdrawal info",
@@ -2498,7 +2948,7 @@ class TelegramPaidMediaBot:
             self.send_with_main_keyboard(
                 chat_id,
                 user_id,
-                "Send the new SBP price as a number. Example: 299",
+                "Send the new RUB price as a number. Example: 299",
             )
             return True
 
@@ -2506,7 +2956,7 @@ class TelegramPaidMediaBot:
             self.send_with_main_keyboard(
                 chat_id,
                 user_id,
-                "SBP price cannot be negative.",
+                "RUB price cannot be negative.",
             )
             return True
 
@@ -2516,7 +2966,7 @@ class TelegramPaidMediaBot:
         self.send_with_main_keyboard(
             chat_id,
             user_id,
-            "SBP price for post #{0} updated: {1} RUB.".format(
+            "RUB price for post #{0} updated: {1} RUB.".format(
                 item_id, self.format_rub_amount(rub_price)
             ),
         )
@@ -2569,14 +3019,15 @@ class TelegramPaidMediaBot:
 
     def send_orders_summary(self, chat_id):
         if not self.orders["items"]:
-            self.send_message(chat_id, "No SBP orders yet.")
+            self.send_message(chat_id, "No RUB orders yet.")
             return
 
-        lines = ["Recent SBP orders:"]
+        lines = ["Recent RUB orders:"]
         for order in list(reversed(self.orders["items"]))[:10]:
             lines.append(
-                "#{0} | item #{1} | {2} RUB | {3} | delivery: {4}".format(
+                "#{0} | {1} | item #{2} | {3} RUB | {4} | delivery: {5}".format(
                     order["id"],
+                    str(order.get("provider") or "platega").upper(),
                     order["item_id"],
                     self.format_rub_amount(order.get("amount_rub", 0)),
                     order.get("status", "-"),
@@ -2659,7 +3110,7 @@ class TelegramPaidMediaBot:
                 self.send_message(chat_id, "Item id and ruble price must be numeric.")
                 return
             if rub_price < 0:
-                self.send_message(chat_id, "SBP price cannot be negative.")
+                self.send_message(chat_id, "RUB price cannot be negative.")
                 return
             item = self.get_item(item_id)
             if not item:
@@ -2669,7 +3120,7 @@ class TelegramPaidMediaBot:
             self.save_catalog()
             self.send_message(
                 chat_id,
-                "SBP price for post #{0} updated: {1} RUB.".format(
+                "RUB price for post #{0} updated: {1} RUB.".format(
                     item_id, self.format_rub_amount(rub_price)
                 ),
             )
@@ -2712,6 +3163,20 @@ class TelegramPaidMediaBot:
             self.handle_buy_rub_command(chat_id, from_user, str(item_id))
             return
 
+        if data.startswith("buyyoomoney:"):
+            try:
+                item_id = int(data.split(":", 1)[1])
+            except ValueError:
+                self.answer_callback(callback_id, "Invalid item id.", show_alert=True)
+                return
+            item = self.get_item(item_id)
+            if not item:
+                self.answer_callback(callback_id, "Post not found.", show_alert=True)
+                return
+            self.answer_callback(callback_id, "Creating YooMoney payment page...")
+            self.handle_buy_yoomoney_command(chat_id, from_user, str(item_id))
+            return
+
         if data.startswith("editrubprice:"):
             if not self.is_admin(from_user.get("id")):
                 self.answer_callback(callback_id, "Admin only.", show_alert=True)
@@ -2729,11 +3194,11 @@ class TelegramPaidMediaBot:
                 message_chat_id,
                 {"type": "edit_rub_price", "item_id": item_id},
             )
-            self.answer_callback(callback_id, "SBP price edit mode enabled.")
+            self.answer_callback(callback_id, "RUB price edit mode enabled.")
             self.send_with_main_keyboard(
                 message_chat_id,
                 from_user.get("id"),
-                "Send new SBP price for post #{0}.\nCurrent: {1} RUB".format(
+                "Send new RUB price for post #{0}.\nCurrent: {1} RUB".format(
                     item_id, self.format_rub_amount(self.item_rub_price(item))
                 ),
             )
@@ -2745,6 +3210,50 @@ class TelegramPaidMediaBot:
         self.state["stats"]["stars_purchases"] += 1
         self.save_state()
         return self._legacy_handle_purchase_update(payload)
+
+    def handle_buy_yoomoney_command(self, chat_id, user, raw_value):
+        if not raw_value:
+            self.send_message(chat_id, "Usage: /buyyoomoney <id>")
+            return
+
+        try:
+            item_id = int(raw_value.split()[0])
+        except ValueError:
+            self.send_message(chat_id, "Item id must be a number.")
+            return
+
+        item = self.get_item(item_id)
+        if not item:
+            self.send_message(chat_id, "Post not found.")
+            return
+
+        rub_price = self.item_rub_price(item)
+        if rub_price <= 0:
+            self.send_message(chat_id, "RUB price is not configured for this item yet.")
+            return
+
+        if not self.has_yoomoney_credentials():
+            self.send_message(chat_id, "YooMoney payments are not configured yet.")
+            return
+
+        try:
+            order = self.create_yoomoney_order(chat_id, user, item)
+        except Exception as exc:
+            LOG.exception("Unable to create YooMoney order")
+            self.send_message(chat_id, "Unable to create YooMoney payment: {0}".format(exc))
+            return
+
+        message_lines = [
+            "YooMoney order created.",
+            "Order: #{0}".format(order["id"]),
+            "Item: #{0} {1}".format(item["id"], item.get("title", "")),
+            "Amount: {0} RUB".format(self.format_rub_amount(order["amount_rub"])),
+        ]
+        payment_url = order.get("payment_url")
+        if payment_url:
+            message_lines.append("Open payment page: {0}".format(payment_url))
+        message_lines.append("After successful payment, the bot will deliver the media in this chat.")
+        self.send_message(chat_id, "\n".join(message_lines), disable_web_page_preview=True)
 
     def handle_message(self, message):
         chat_id = message["chat"]["id"]
@@ -2788,6 +3297,10 @@ class TelegramPaidMediaBot:
             self.handle_buy_rub_command(chat_id, from_user, args)
             return
 
+        if command == "/buyyoomoney":
+            self.handle_buy_yoomoney_command(chat_id, from_user, args)
+            return
+
         if command in {
             "/admin",
             "/cancel",
@@ -2807,6 +3320,7 @@ class TelegramPaidMediaBot:
             "/sales",
             "/setrubprice",
             "/orders",
+            "/buyyoomoney",
         }:
             self.handle_admin_command(message, command, args)
             return

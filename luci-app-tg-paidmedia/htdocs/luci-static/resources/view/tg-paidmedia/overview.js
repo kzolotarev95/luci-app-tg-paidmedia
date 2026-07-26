@@ -87,6 +87,43 @@ var PAYMENT_FIELD_HELP = {
 	}
 };
 
+PAYMENT_FIELD_HELP.yoomoney_enabled = {
+	title: 'Включить ЮMoney',
+	text: 'Включайте только после заполнения номера кошелька, секрета уведомлений и callback URL. Иначе бот не сможет принять и проверить перевод.'
+};
+PAYMENT_FIELD_HELP.yoomoney_wallet = {
+	title: 'Номер кошелька ЮMoney',
+	text: 'Номер кошелька, на который ЮMoney будет зачислять рублевые платежи покупателей.'
+};
+PAYMENT_FIELD_HELP.yoomoney_notification_secret = {
+	title: 'Секрет уведомлений ЮMoney',
+	text: 'Секрет из настроек HTTP-уведомлений ЮMoney. Он нужен для проверки подписи sign у входящих webhook.'
+};
+PAYMENT_FIELD_HELP.yoomoney_callback_url = {
+	title: 'Публичный URL webhook ЮMoney',
+	text: 'Внешний URL для HTTP-уведомлений ЮMoney. На том же домене бот публикует промежуточную платежную страницу для покупателя.'
+};
+PAYMENT_FIELD_HELP.yoomoney_success_url = {
+	title: 'URL успешного возврата ЮMoney',
+	text: 'Необязательная страница, на которую ЮMoney вернет покупателя после оплаты.'
+};
+PAYMENT_FIELD_HELP.yoomoney_webhook_host = {
+	title: 'Хост webhook ЮMoney',
+	text: 'Локальный адрес, на котором бот принимает HTTP-уведомления ЮMoney. Обычно оставляют 0.0.0.0.'
+};
+PAYMENT_FIELD_HELP.yoomoney_webhook_port = {
+	title: 'Порт webhook ЮMoney',
+	text: 'Локальный порт сервера ЮMoney. Его нужно пробросить наружу или проксировать с публичного домена.'
+};
+PAYMENT_FIELD_HELP.yoomoney_webhook_path = {
+	title: 'Путь webhook ЮMoney',
+	text: 'Локальный путь для HTTP-уведомлений ЮMoney. Он должен совпадать с путем в публичном callback URL.'
+};
+PAYMENT_FIELD_HELP.yoomoney_payment_path = {
+	title: 'Путь платежной страницы ЮMoney',
+	text: 'Локальный путь промежуточной страницы оплаты. Покупатель открывает ее, затем выбирает оплату кошельком ЮMoney или картой.'
+};
+
 function parseJSON(text, fallback) {
 	try {
 		return JSON.parse(text || '');
@@ -1811,6 +1848,43 @@ return view.extend({
 		o.rmempty = true;
 		o.placeholder = '25';
 
+		s = m.section(form.NamedSection, 'main', 'bot', 'ЮMoney');
+
+		o = s.option(form.Flag, 'yoomoney_enabled', 'Включить ЮMoney');
+		o.rmempty = false;
+
+		o = s.option(form.Value, 'yoomoney_wallet', 'Номер кошелька ЮMoney');
+		o.rmempty = true;
+		o.placeholder = '41001xxxxxxxxxxxx';
+
+		o = s.option(form.Value, 'yoomoney_notification_secret', 'Секрет уведомлений ЮMoney');
+		o.password = true;
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'yoomoney_callback_url', 'Публичный URL webhook ЮMoney');
+		o.rmempty = true;
+		o.placeholder = 'https://example.com/yoomoney/webhook';
+
+		o = s.option(form.Value, 'yoomoney_success_url', 'URL успешного возврата ЮMoney');
+		o.rmempty = true;
+
+		o = s.option(form.Value, 'yoomoney_webhook_host', 'Хост webhook ЮMoney');
+		o.rmempty = true;
+		o.placeholder = '0.0.0.0';
+
+		o = s.option(form.Value, 'yoomoney_webhook_port', 'Порт webhook ЮMoney');
+		o.datatype = 'port';
+		o.rmempty = true;
+		o.placeholder = '8100';
+
+		o = s.option(form.Value, 'yoomoney_webhook_path', 'Путь webhook ЮMoney');
+		o.rmempty = true;
+		o.placeholder = '/yoomoney/webhook';
+
+		o = s.option(form.Value, 'yoomoney_payment_path', 'Путь платежной страницы ЮMoney');
+		o.rmempty = true;
+		o.placeholder = '/yoomoney/pay';
+
 		return m.render();
 	},
 
@@ -1927,6 +2001,7 @@ return view.extend({
 		var balance = botStatus.last_balance || {};
 		var lastPurchase = botStatus.last_purchase || {};
 		var lastPlategaEvent = botStatus.last_platega_event || {};
+		var lastYoomoneyEvent = botStatus.last_yoomoney_event || {};
 		var stats = botStatus.stats || {};
 		var lastException = String(botStatus.last_exception || '').trim();
 		var restartInsight = buildRestartInsight(filteredLogText, botStatus);
@@ -1945,6 +2020,8 @@ return view.extend({
 			{ label: 'Stars purchases', value: String(stats.stars_purchases || 0) },
 			{ label: 'SBP orders', value: String(stats.sbp_orders_created || 0) },
 			{ label: 'SBP delivered', value: String(stats.sbp_orders_paid || 0) },
+			{ label: 'YooMoney orders', value: String(stats.yoomoney_orders_created || 0) },
+			{ label: 'YooMoney delivered', value: String(stats.yoomoney_orders_paid || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0441\u0442\u0430\u0440\u0442', value: restartInsight.lastStartAt || '-', subtle: true },
 			{ label: '\u0420\u0435\u0441\u0442\u0430\u0440\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0441', value: String(startStats.countLastHour || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0441\u0442\u0430\u0440\u0442\u044B', value: startStats.recentStarts.length ? startStats.recentStarts.join(' | ') : '-', subtle: true },
@@ -1959,6 +2036,11 @@ return view.extend({
 			{
 				label: 'Last SBP event',
 				value: lastPlategaEvent.status ? String(lastPlategaEvent.status + ' / ' + (lastPlategaEvent.transaction_id || '-')) : '-',
+				subtle: true
+			},
+			{
+				label: 'Last YooMoney event',
+				value: lastYoomoneyEvent.status ? String(lastYoomoneyEvent.status + ' / ' + (lastYoomoneyEvent.operation_id || '-')) : '-',
 				subtle: true
 			}
 		];
