@@ -8,6 +8,7 @@ import http.client
 import http.server
 import json
 import logging
+import mimetypes
 import os
 import pathlib
 import socket
@@ -23,6 +24,11 @@ import urllib.request
 
 
 LOG = logging.getLogger("tg-paidmedia")
+
+
+def guess_mime_type(path, fallback="application/octet-stream"):
+    mime_type = mimetypes.guess_type(path or "")[0]
+    return mime_type or fallback
 
 
 class IPv4HTTPSConnection(http.client.HTTPSConnection):
@@ -702,6 +708,85 @@ class TelegramPaidMediaBot:
 
         return data.get("result")
 
+    def api_call_multipart(self, method, payload=None, files=None, timeout=None):
+        payload = dict(payload or {})
+        files = list(files or [])
+        boundary = "----tgpaidmedia{0}".format(int(time.time() * 1000))
+        chunks = []
+
+        def add_bytes(value):
+            if isinstance(value, bytes):
+                chunks.append(value)
+            else:
+                chunks.append(str(value).encode("utf-8"))
+
+        for key, value in payload.items():
+            add_bytes("--{0}\r\n".format(boundary))
+            add_bytes('Content-Disposition: form-data; name="{0}"\r\n\r\n'.format(key))
+            if isinstance(value, (dict, list)):
+                add_bytes(json.dumps(value, separators=(",", ":"), ensure_ascii=False))
+            elif isinstance(value, bool):
+                add_bytes("true" if value else "false")
+            else:
+                add_bytes("" if value is None else value)
+            add_bytes("\r\n")
+
+        handles = []
+        try:
+            for key, file_path, filename, mime_type in files:
+                handle = open(file_path, "rb")
+                handles.append(handle)
+                add_bytes("--{0}\r\n".format(boundary))
+                add_bytes(
+                    'Content-Disposition: form-data; name="{0}"; filename="{1}"\r\n'.format(
+                        key, filename
+                    )
+                )
+                add_bytes("Content-Type: {0}\r\n\r\n".format(mime_type))
+                add_bytes(handle.read())
+                add_bytes("\r\n")
+
+            add_bytes("--{0}--\r\n".format(boundary))
+            body = b"".join(chunks)
+        finally:
+            for handle in handles:
+                handle.close()
+
+        request = urllib.request.Request(
+            self.api_base + method,
+            data=body,
+            headers={"Content-Type": "multipart/form-data; boundary={0}".format(boundary)},
+            method="POST",
+        )
+
+        try:
+            with self.url_opener.open(
+                request, timeout=timeout or (self.poll_timeout + 15)
+            ) as response:
+                data = json.load(response)
+        except urllib.error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(
+                "Telegram API HTTP error for {0}: {1}".format(method, details)
+            ) from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(
+                "Telegram API connection error for {0}: {1}".format(method, exc)
+            ) from exc
+        except TimeoutError as exc:
+            raise RuntimeError(
+                "Telegram API connection error for {0}: request timed out".format(method)
+            ) from exc
+
+        if not data.get("ok"):
+            raise RuntimeError(
+                "Telegram API error for {0}: {1}".format(
+                    method, data.get("description", "unknown error")
+                )
+            )
+
+        return data.get("result")
+
     def api_call_via_wget(self, method, payload=None, timeout=None):
         request_timeout = int(timeout or (self.poll_timeout + 15))
         command = [
@@ -1115,6 +1200,27 @@ class TelegramPaidMediaBot:
         )
 
     def send_photo(self, chat_id, file_id, caption="", reply_markup=None, has_spoiler=False):
+        if file_id and os.path.isfile(file_id):
+            payload = {"chat_id": chat_id}
+            if caption:
+                payload["caption"] = safe_caption(caption)
+            if reply_markup:
+                payload["reply_markup"] = reply_markup
+            if has_spoiler:
+                payload["has_spoiler"] = True
+            return self.api_call_multipart(
+                "sendPhoto",
+                payload,
+                files=[
+                    (
+                        "photo",
+                        file_id,
+                        os.path.basename(file_id),
+                        guess_mime_type(file_id, "image/jpeg"),
+                    )
+                ],
+            )
+
         payload = {"chat_id": chat_id, "photo": file_id}
         if caption:
             payload["caption"] = safe_caption(caption)

@@ -5,7 +5,8 @@ set -eu
 REPO_OWNER="kzolotarev95"
 REPO_NAME="luci-app-tg-paidmedia"
 REPO_BRANCH="${TG_PAIDMEDIA_BRANCH:-main}"
-DEFAULT_HOME_IMAGE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/assets/bot-home-header.jpg"
+OLD_DEFAULT_HOME_IMAGE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/assets/bot-home-header.jpg"
+DEFAULT_HOME_IMAGE_PATH="/etc/tg-paidmedia/home-header.jpg"
 ARCHIVE_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
 TMP_DIR="/tmp/tg-paidmedia-install.$$"
 ARCHIVE_PATH="${TMP_DIR}/repo.tar.gz"
@@ -337,8 +338,8 @@ configure_uci() {
 		enabled_value="0"
 	fi
 
-	if [ -z "$current_home_image" ]; then
-		uci set tg-paidmedia.main.home_image="$DEFAULT_HOME_IMAGE_URL"
+	if [ -z "$current_home_image" ] || [ "$current_home_image" = "$OLD_DEFAULT_HOME_IMAGE_URL" ]; then
+		uci set tg-paidmedia.main.home_image="$DEFAULT_HOME_IMAGE_PATH"
 	fi
 
 	uci set tg-paidmedia.main.enabled="$enabled_value"
@@ -406,6 +407,7 @@ main() {
 	install_file "$REPO_ROOT/luci-app-tg-paidmedia/htdocs/luci-static/resources/view/tg-paidmedia/overview.js" "/www/luci-static/resources/view/tg-paidmedia/overview.js" "0644"
 	install_if_missing "$REPO_ROOT/tg-paidmedia-bot/files/etc/config/tg-paidmedia" "/etc/config/tg-paidmedia" "0644"
 	install_if_missing "$REPO_ROOT/tg-paidmedia-bot/files/etc/tg-paidmedia/catalog.json" "/etc/tg-paidmedia/catalog.json" "0644"
+	install_if_missing "$REPO_ROOT/assets/bot-home-header.jpg" "$DEFAULT_HOME_IMAGE_PATH" "0644"
 
 	configure_uci
 	save_tracked_packages

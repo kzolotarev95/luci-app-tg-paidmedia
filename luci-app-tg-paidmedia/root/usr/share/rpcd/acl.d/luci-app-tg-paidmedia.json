@@ -17,6 +17,12 @@
         "tg-paidmedia"
       ],
       "file": {
+        "/etc/tg-paidmedia": [
+          "list"
+        ],
+        "/etc/tg-paidmedia/*": [
+          "read"
+        ],
         "/bin/cat /var/run/tg-paidmedia/status.json": [
           "exec"
         ],
@@ -38,6 +44,13 @@
         "tg-paidmedia"
       ],
       "file": {
+        "/etc/tg-paidmedia": [
+          "write"
+        ],
+        "/etc/tg-paidmedia/*": [
+          "write",
+          "remove"
+        ],
         "/etc/init.d/log restart": [
           "exec"
         ]
