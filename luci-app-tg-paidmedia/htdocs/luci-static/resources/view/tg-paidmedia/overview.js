@@ -1139,6 +1139,21 @@ return view.extend({
 				}
 			}
 
+			@keyframes tg-paidmedia-status-pulse-danger {
+				0% {
+					box-shadow: 0 0 0 0 rgba(211, 106, 106, 0.26);
+					transform: scale(1);
+				}
+				70% {
+					box-shadow: 0 0 0 .48rem rgba(211, 106, 106, 0);
+					transform: scale(1.08);
+				}
+				100% {
+					box-shadow: 0 0 0 0 rgba(211, 106, 106, 0);
+					transform: scale(1);
+				}
+			}
+
 			.tg-paidmedia-badge-running {
 				color: var(--tg-success);
 				background: var(--tg-badge-running-bg);
@@ -1155,6 +1170,12 @@ return view.extend({
 				color: var(--tg-danger);
 				background: var(--tg-badge-stopped-bg);
 				border: 1px solid var(--tg-badge-stopped-border);
+			}
+
+			.tg-paidmedia-badge-pulse-danger::before,
+			.tg-paidmedia-top-badge.is-stopped::before {
+				animation: tg-paidmedia-status-pulse-danger 1.8s ease-out infinite;
+				transform-origin: center;
 			}
 
 			.tg-paidmedia-actions {
@@ -1837,6 +1858,12 @@ return view.extend({
 				font-weight: 700;
 			}
 
+			.tg-paidmedia-payments-health-toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .55rem;
+			}
+
 			.tg-paidmedia-page .cbi-map h3,
 			.tg-paidmedia-page .cbi-map h4,
 			.tg-paidmedia-page .cbi-section h3,
@@ -2371,9 +2398,11 @@ return view.extend({
 		return this.extractServiceInstance(serviceStatus);
 	},
 
-	buildStateBadge: function(isOk, okText, badText) {
+	buildStateBadge: function(isOk, okText, badText, extraClass) {
 		return E('span', {
-			'class': 'tg-paidmedia-badge ' + (isOk ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped')
+			'class': 'tg-paidmedia-badge ' +
+				(isOk ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped') +
+				(extraClass ? ' ' + extraClass : '')
 		}, [ isOk ? okText : badText ]);
 	},
 
@@ -2387,11 +2416,12 @@ return view.extend({
 		return checkedAt + (reason ? ' / ' + reason : '');
 	},
 
-	buildYooMoneyHealthSection: function(data) {
+	buildYooMoneyHealthSection: function(data, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) {
 		var serviceStatus = data[1] || {};
 		var botStatus = parseJSON((data[2] || {}).stdout, {});
 		var health = botStatus.yoomoney_health || {};
 		var secretCheck = health.last_secret_check || {};
+		var serviceMeta = this.extractServiceRunning(serviceStatus);
 		var tunnelMeta = this.extractServiceInstance(serviceStatus, 'yoomoney-tunnel');
 		var tunnelRuntimeState = String(health.tunnel_runtime_state || '').trim();
 		var tunnelRuntimeMessage = String(health.tunnel_runtime_message || '').trim();
@@ -2399,6 +2429,7 @@ return view.extend({
 		var tunnelBadge;
 		var tunnelTargetText;
 		var warningsText;
+		var cards;
 
 		if (!health.secret_configured)
 			secretBadge = this.buildStateBadge(false, '', '\u0421\u0435\u043A\u0440\u0435\u0442 \u043D\u0435 \u0437\u0430\u0434\u0430\u043D');
@@ -2422,7 +2453,7 @@ return view.extend({
 		else if (tunnelRuntimeState === 'retrying')
 			tunnelBadge = this.buildStateBadge(false, '', '\u041F\u0435\u0440\u0435\u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0435\u0442\u0441\u044F');
 		else if (tunnelRuntimeState === 'stopped')
-			tunnelBadge = this.buildStateBadge(false, '', '\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D');
+			tunnelBadge = this.buildStateBadge(false, '', '\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D', 'tg-paidmedia-badge-pulse-danger');
 		else if (tunnelMeta.running)
 			tunnelBadge = this.buildStateBadge(true, '\u041F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442\u0441\u044F', '');
 		else
@@ -2437,7 +2468,17 @@ return view.extend({
 		warningsText = health.warnings && health.warnings.length ? health.warnings.join(' | ') : '\u041D\u0435\u0442';
 		if (tunnelRuntimeMessage && tunnelRuntimeState && tunnelRuntimeState !== 'active' && warningsText === '\u041D\u0435\u0442')
 			warningsText = tunnelRuntimeMessage;
-		var cards = [
+
+		cards = [
+			{
+				label: '\u0421\u0435\u0440\u0432\u0438\u0441',
+				value: this.buildStateBadge(
+					!!serviceMeta.running,
+					'\u0417\u0430\u043F\u0443\u0449\u0435\u043D',
+					'\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D',
+					serviceMeta.running ? '' : 'tg-paidmedia-badge-pulse-danger'
+				)
+			},
 			{
 				label: '\u0421\u0435\u043A\u0440\u0435\u0442 \u042eMoney',
 				value: secretBadge
@@ -2480,7 +2521,15 @@ return view.extend({
 			E('div', { 'class': 'tg-paidmedia-section-head' }, [
 				E('div', {}, [
 					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u041C\u0438\u043D\u0438-\u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u042eMoney' ]),
-					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u0421\u044E\u0434\u0430 \u0441\u0440\u0430\u0437\u0443 \u043F\u0430\u0434\u0430\u0435\u0442 \u0441\u0442\u0430\u0442\u0443\u0441 \u0441\u0435\u043A\u0440\u0435\u0442\u0430, webhook \u0438 reverse tunnel \u0431\u0435\u0437 \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430 \u0432\u0441\u0435\u0433\u043E logread.' ])
+					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u0421\u044E\u0434\u0430 \u0441\u0440\u0430\u0437\u0443 \u043F\u0430\u0434\u0430\u0435\u0442 \u0441\u0442\u0430\u0442\u0443\u0441 \u0441\u0435\u043A\u0440\u0435\u0442\u0430, webhook, reverse tunnel \u0438 \u0441\u0435\u0440\u0432\u0438\u0441\u0430 \u0431\u0435\u0437 \u043F\u0440\u043E\u0441\u043C\u043E\u0442\u0440\u0430 \u0432\u0441\u0435\u0433\u043E logread.' ])
+				]),
+				E('div', { 'class': 'tg-paidmedia-payments-health-toolbar' }, [
+					E('button', {
+						'class': 'btn cbi-button tg-paidmedia-toolbar-btn ' + (health.tunnel_enabled ? 'cbi-button-negative' : 'cbi-button-action'),
+						'click': ui.createHandlerFn(this, function() {
+							return this.handleYooMoneyTunnelToggle(!health.tunnel_enabled, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget);
+						})
+					}, [ health.tunnel_enabled ? '\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u0442\u044C Reverse tunnel' : '\u0412\u043A\u043B\u044E\u0447\u0438\u0442\u044C Reverse tunnel' ])
 				])
 			]),
 			E('div', { 'class': 'tg-paidmedia-grid' }, cards.map(function(card) {
@@ -2608,7 +2657,7 @@ return view.extend({
 		if (headerStatusTarget)
 			dom.content(headerStatusTarget, [ this.buildHeaderStatus(data) ]);
 		if (paymentsHealthTarget)
-			dom.content(paymentsHealthTarget, [ this.buildYooMoneyHealthSection(data) ]);
+			dom.content(paymentsHealthTarget, [ this.buildYooMoneyHealthSection(data, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) ]);
 
 		filteredLogText = filterBotLogText((data[3] || {}).stdout || '', 200);
 		shouldStickToBottom = this.shouldAutoScrollLog(logTarget);
@@ -2844,6 +2893,56 @@ return view.extend({
 					('\u0421\u0435\u0440\u0432\u0438\u0441 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u043b\u0441\u044f \u043f\u043e\u0441\u043b\u0435 ' + actionLabel + '. \u041f\u043e\u0441\u043c\u043e\u0442\u0440\u0438\u0442\u0435 \u0436\u0443\u0440\u043d\u0430\u043b \u043d\u0438\u0436\u0435.')
 				);
 			}
+		}.bind(this)).catch(function(err) {
+			ui.hideModal();
+			ui.addNotification(null, E('p', {}, [ err.message || String(err) ]), 'danger');
+		});
+	},
+
+	handleYooMoneyTunnelToggle: function(enable, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget) {
+		var nextValue = enable ? '1' : '0';
+		var progressText = enable
+			? '\u0412\u043A\u043B\u044E\u0447\u0430\u044E reverse tunnel \u042EMoney \u0438 \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u043A\u0430\u044E \u0441\u0435\u0440\u0432\u0438\u0441...'
+			: '\u041E\u0442\u043A\u043B\u044E\u0447\u0430\u044E reverse tunnel \u042EMoney \u0438 \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0441\u043A\u0430\u044E \u0441\u0435\u0440\u0432\u0438\u0441...';
+
+		ui.showModal('\u0412\u044B\u043F\u043E\u043B\u043D\u044F\u0435\u0442\u0441\u044F', [
+			E('p', {}, [ progressText ])
+		]);
+
+		return fs.exec('/sbin/uci', [ 'set', 'tg-paidmedia.main.yoomoney_tunnel_enabled=' + nextValue ]).then(function(result) {
+			if (result.code !== 0)
+				throw new Error(result.stderr || '\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0438\u0442\u044C reverse tunnel \u0432 UCI.');
+
+			return fs.exec('/sbin/uci', [ 'commit', 'tg-paidmedia' ]);
+		}).then(function(result) {
+			if (result.code !== 0)
+				throw new Error(result.stderr || '\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C \u043A\u043E\u043D\u0444\u0438\u0433 tg-paidmedia.');
+
+			return callInitAction('tg-paidmedia', 'restart');
+		}).then(function() {
+			ui.hideModal();
+			return delay(1200);
+		}.bind(this)).then(function() {
+			return this.load();
+		}.bind(this)).then(function(data) {
+			var serviceStatus = data[1] || {};
+			var botStatus = parseJSON((data[2] || {}).stdout, {});
+			var health = botStatus.yoomoney_health || {};
+			var tunnelMeta = this.extractServiceInstance(serviceStatus, 'yoomoney-tunnel');
+
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data);
+
+			if (enable && !health.tunnel_enabled)
+				throw new Error('\u0424\u043B\u0430\u0433 reverse tunnel \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u043B\u0441\u044F. \u041F\u0440\u043E\u0432\u0435\u0440\u044C \u043A\u043E\u043D\u0444\u0438\u0433 \u0438 \u043E\u0431\u043D\u043E\u0432\u0438 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443.');
+
+			if (!enable && (health.tunnel_enabled || tunnelMeta.running))
+				throw new Error('\u0422\u0443\u043D\u043D\u0435\u043B\u044C \u043F\u043E\u043A\u0430 \u0435\u0449\u0451 \u043D\u0435 \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u0438\u043B\u0441\u044F. \u041E\u0431\u043D\u043E\u0432\u0438 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0447\u0435\u0440\u0435\u0437 \u043F\u0430\u0440\u0443 \u0441\u0435\u043A\u0443\u043D\u0434.');
+
+			ui.addNotification(null, E('p', {}, [
+				enable
+					? 'Reverse tunnel \u042EMoney \u0432\u043A\u043B\u044E\u0447\u0451\u043D. \u0421\u0435\u0440\u0432\u0438\u0441 \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0449\u0435\u043D.'
+					: 'Reverse tunnel \u042EMoney \u043E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D. \u0421\u0435\u0440\u0432\u0438\u0441 \u043F\u0435\u0440\u0435\u0437\u0430\u043F\u0443\u0449\u0435\u043D.'
+			]), 'info');
 		}.bind(this)).catch(function(err) {
 			ui.hideModal();
 			ui.addNotification(null, E('p', {}, [ err.message || String(err) ]), 'danger');

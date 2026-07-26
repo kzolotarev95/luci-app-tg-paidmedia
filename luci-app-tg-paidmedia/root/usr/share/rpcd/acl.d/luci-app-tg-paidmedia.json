@@ -51,6 +51,15 @@
           "write",
           "remove"
         ],
+        "/sbin/uci set tg-paidmedia.main.yoomoney_tunnel_enabled=0": [
+          "exec"
+        ],
+        "/sbin/uci set tg-paidmedia.main.yoomoney_tunnel_enabled=1": [
+          "exec"
+        ],
+        "/sbin/uci commit tg-paidmedia": [
+          "exec"
+        ],
         "/etc/init.d/log restart": [
           "exec"
         ]
