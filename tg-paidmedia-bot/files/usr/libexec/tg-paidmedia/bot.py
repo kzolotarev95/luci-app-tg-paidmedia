@@ -909,6 +909,17 @@ class TelegramPaidMediaBot:
             self.state["stats"]["sbp_orders_paid"] += 1
             self.save_state()
             self.touch_order(order, delivery_state="delivered")
+            self.notify_admin_purchase(
+                "СБП / Platega",
+                user_id=order.get("user_id"),
+                user_name=order.get("user_name", ""),
+                item=item,
+                amount_text="{0} RUB".format(
+                    self.format_rub_amount(order.get("amount_rub", 0))
+                ),
+                order_id=order.get("id"),
+                received_at=order.get("updated_at") or utc_now(),
+            )
         except Exception as exc:
             LOG.exception("Unable to deliver SBP order %s", order.get("id"))
             self.touch_order(order, delivery_state="delivery_error", delivery_error=str(exc))
@@ -988,6 +999,48 @@ class TelegramPaidMediaBot:
 
     def is_admin(self, user_id):
         return bool(self.admin_ids) and int(user_id) in self.admin_ids
+
+    def notify_admin_purchase(
+        self,
+        payment_method,
+        user_id=None,
+        user_name="",
+        item=None,
+        amount_text="",
+        order_id=None,
+        received_at="",
+    ):
+        if not self.admin_ids:
+            return
+
+        lines = [
+            "Новая покупка",
+            "Способ оплаты: {0}".format(payment_method),
+        ]
+
+        if item:
+            lines.append(
+                "Пост: #{0} {1}".format(item.get("id"), item.get("title") or "-")
+            )
+        if amount_text:
+            lines.append("Сумма: {0}".format(amount_text))
+        if user_name or user_id:
+            lines.append(
+                "Покупатель: {0} (ID: {1})".format(user_name or "-", user_id or "-")
+            )
+        if order_id is not None:
+            lines.append("Заказ: #{0}".format(order_id))
+        if received_at:
+            lines.append("Время: {0}".format(received_at))
+
+        text = "\n".join(lines)
+        for admin_id in sorted(self.admin_ids):
+            try:
+                self.send_message(admin_id, text)
+            except Exception as exc:
+                LOG.warning(
+                    "Failed to notify admin %s about purchase: %s", admin_id, exc
+                )
 
     def send_message(
         self,
@@ -2120,6 +2173,19 @@ class TelegramPaidMediaBot:
             if item:
                 thank_you += "\nUnlocked item: #{0} {1}".format(item["id"], item["title"])
             self.send_message(user["id"], thank_you)
+
+        self.notify_admin_purchase(
+            "Telegram Stars",
+            user_id=purchase_info.get("user_id"),
+            user_name=purchase_info.get("user_name", ""),
+            item=item,
+            amount_text=(
+                "{0} Stars".format(item.get("price"))
+                if item and item.get("price") is not None
+                else ""
+            ),
+            received_at=purchase_info.get("received_at", ""),
+        )
 
     _legacy_build_catalog_text = build_catalog_text
     _legacy_build_catalog_keyboard = build_catalog_keyboard
