@@ -1113,28 +1113,34 @@ class TelegramPaidMediaBot:
             self.yoomoney_webhook_path,
         )
 
-    def send_photo(self, chat_id, file_id, caption="", reply_markup=None):
+    def send_photo(self, chat_id, file_id, caption="", reply_markup=None, has_spoiler=False):
         payload = {"chat_id": chat_id, "photo": file_id}
         if caption:
             payload["caption"] = safe_caption(caption)
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if has_spoiler:
+            payload["has_spoiler"] = True
         return self.api_call("sendPhoto", payload)
 
-    def send_video(self, chat_id, file_id, caption="", reply_markup=None):
+    def send_video(self, chat_id, file_id, caption="", reply_markup=None, has_spoiler=False):
         payload = {"chat_id": chat_id, "video": file_id}
         if caption:
             payload["caption"] = safe_caption(caption)
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if has_spoiler:
+            payload["has_spoiler"] = True
         return self.api_call("sendVideo", payload)
 
-    def send_media_group(self, chat_id, media_entries, caption=""):
+    def send_media_group(self, chat_id, media_entries, caption="", has_spoiler=False):
         payload_media = []
         for index, entry in enumerate(media_entries):
             payload_entry = {"type": entry["type"], "media": entry["file_id"]}
             if index == 0 and caption:
                 payload_entry["caption"] = safe_caption(caption)
+            if has_spoiler:
+                payload_entry["has_spoiler"] = True
             payload_media.append(payload_entry)
         return self.api_call("sendMediaGroup", {"chat_id": chat_id, "media": payload_media})
 
@@ -3167,6 +3173,7 @@ class TelegramPaidMediaBot:
                         entry["file_id"],
                         caption=caption,
                         reply_markup=keyboard,
+                        has_spoiler=True,
                     )
                 else:
                     self.send_video(
@@ -3174,10 +3181,11 @@ class TelegramPaidMediaBot:
                         entry["file_id"],
                         caption=caption,
                         reply_markup=keyboard,
+                        has_spoiler=True,
                     )
                 continue
 
-            self.send_media_group(chat_id, media_entries, caption=caption)
+            self.send_media_group(chat_id, media_entries, caption=caption, has_spoiler=True)
             self.send_message(
                 chat_id,
                 "Выберите способ покупки для товара #{0}:".format(item["id"]),
