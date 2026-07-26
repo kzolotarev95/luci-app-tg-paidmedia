@@ -3035,7 +3035,7 @@ class TelegramPaidMediaBot:
         lines = ["#{0} • {1}".format(item["id"], media_type)]
         if body:
             lines.extend(["", body])
-        lines.extend(["", " / ".join(price_parts)])
+        lines.extend(["", "🔒 Медиа откроется только после оплаты.", "", " / ".join(price_parts)])
         return safe_caption("\n".join(lines))
 
     def build_catalog_keyboard(self):
