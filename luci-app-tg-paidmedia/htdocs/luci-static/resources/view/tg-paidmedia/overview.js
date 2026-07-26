@@ -2760,8 +2760,7 @@ return view.extend({
 					paymentsToggle
 				])
 			]),
-			paymentsBody,
-			paymentsHealthTarget
+			paymentsBody
 		]);
 
 		return Promise.all([
@@ -2774,7 +2773,7 @@ return view.extend({
 			this.updatePanels(statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget, data);
 			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget, headerStatusTarget, paymentsHealthTarget));
 			dom.content(settingsBody, [ botFormNode ]);
-			dom.content(paymentsBody, [ paymentsFormNode ]);
+			dom.content(paymentsBody, [ paymentsFormNode, paymentsHealthTarget ]);
 			this.decoratePaymentTooltips(paymentsBody);
 
 			var pageNode = E('div', { 'class': 'tg-paidmedia-page' }, [
