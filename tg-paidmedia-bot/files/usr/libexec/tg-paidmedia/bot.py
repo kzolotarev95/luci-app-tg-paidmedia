@@ -346,6 +346,7 @@ class TelegramPaidMediaBot:
                 "окно покупки за Stars."
             ),
         ).strip()
+        self.home_image = os.environ.get("TG_HOME_IMAGE", "").strip()
 
         self.platega_enabled = env_bool("TG_PLATEGA_ENABLED", False)
         self.platega_base_url = (
@@ -1823,6 +1824,23 @@ class TelegramPaidMediaBot:
             reply_markup=self.build_main_keyboard(user_id=user_id),
         )
 
+    def send_home_screen(self, chat_id, user_id):
+        text = self.build_home_text()
+        reply_markup = self.build_main_keyboard(user_id=user_id)
+
+        if self.home_image:
+            try:
+                return self.send_photo(
+                    chat_id,
+                    self.home_image,
+                    caption=text,
+                    reply_markup=reply_markup,
+                )
+            except Exception as exc:
+                LOG.warning("Failed to send home image, falling back to text: %s", exc)
+
+        return self.send_message(chat_id, text, reply_markup=reply_markup)
+
     def answer_callback(self, callback_id, text=None, show_alert=False):
         payload = {
             "callback_query_id": callback_id,
@@ -2396,7 +2414,7 @@ class TelegramPaidMediaBot:
         if self.is_menu_button(text, "back"):
             self.clear_pending_action(chat_id)
             self.clear_pending_upload(chat_id)
-            self.send_with_main_keyboard(chat_id, user_id, self.build_home_text())
+            self.send_home_screen(chat_id, user_id)
             return True
 
         if self.is_menu_button(text, "cancel"):
@@ -3665,7 +3683,7 @@ class TelegramPaidMediaBot:
             return
 
         if command == "/start":
-            self.send_with_main_keyboard(chat_id, user_id, self.build_home_text())
+            self.send_home_screen(chat_id, user_id)
             return
 
         if command == "/catalog":
@@ -3709,7 +3727,7 @@ class TelegramPaidMediaBot:
             return
 
         if command == "/help":
-            self.send_with_main_keyboard(chat_id, user_id, self.build_home_text())
+            self.send_home_screen(chat_id, user_id)
             return
 
         self.send_with_main_keyboard(

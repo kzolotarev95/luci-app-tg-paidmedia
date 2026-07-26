@@ -13,7 +13,7 @@ SECTION=main
 . /lib/functions.sh
 
 start_service() {
-	local enabled token bot_title welcome_text data_dir catalog_path
+	local enabled token bot_title welcome_text home_image data_dir catalog_path
 	local state_path status_path poll_timeout drop_pending admin_ids
 	local platega_enabled platega_base_url platega_merchant_id platega_secret_key
 	local platega_callback_url platega_success_url platega_fail_url platega_redirect_url
@@ -38,7 +38,8 @@ start_service() {
 	}
 
 	config_get bot_title "$SECTION" bot_title "Магазин платного контента"
-	config_get welcome_text "$SECTION" welcome_text "Выберите товар ниже, и Telegram покажет официальное окно подтверждения покупки за Stars."
+	config_get welcome_text "$SECTION" welcome_text "Откройте каталог внизу, в Telegram магазине эксклюзивного платного контента за Stars."
+	config_get home_image "$SECTION" home_image ""
 	config_get data_dir "$SECTION" data_dir "/var/lib/tg-paidmedia"
 	config_get catalog_path "$SECTION" catalog_path "/etc/tg-paidmedia/catalog.json"
 	config_get state_path "$SECTION" state_path "/var/lib/tg-paidmedia/state.json"
@@ -87,6 +88,7 @@ start_service() {
 	procd_set_param env TG_BOT_TOKEN="$token"
 	procd_append_param env TG_BOT_TITLE="$bot_title"
 	procd_append_param env TG_WELCOME_TEXT="$welcome_text"
+	procd_append_param env TG_HOME_IMAGE="$home_image"
 	procd_append_param env TG_DATA_DIR="$data_dir"
 	procd_append_param env TG_CATALOG_PATH="$catalog_path"
 	procd_append_param env TG_STATE_PATH="$state_path"

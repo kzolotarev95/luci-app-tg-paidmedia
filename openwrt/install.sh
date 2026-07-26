@@ -5,6 +5,7 @@ set -eu
 REPO_OWNER="kzolotarev95"
 REPO_NAME="luci-app-tg-paidmedia"
 REPO_BRANCH="${TG_PAIDMEDIA_BRANCH:-main}"
+DEFAULT_HOME_IMAGE_URL="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/assets/bot-home-header.jpg"
 ARCHIVE_URL="https://codeload.github.com/${REPO_OWNER}/${REPO_NAME}/tar.gz/refs/heads/${REPO_BRANCH}"
 TMP_DIR="/tmp/tg-paidmedia-install.$$"
 ARCHIVE_PATH="${TMP_DIR}/repo.tar.gz"
@@ -311,7 +312,7 @@ set_admin_ids() {
 }
 
 configure_uci() {
-	local token admin_ids enabled_value current_token
+	local token admin_ids enabled_value current_token current_home_image
 
 	token="${TG_BOT_TOKEN:-}"
 	admin_ids="${TG_ADMIN_IDS:-${TG_ADMIN_ID:-}}"
@@ -329,10 +330,15 @@ configure_uci() {
 	fi
 
 	current_token="$(uci -q get tg-paidmedia.main.token || true)"
+	current_home_image="$(uci -q get tg-paidmedia.main.home_image || true)"
 	if [ -n "$current_token" ]; then
 		enabled_value="1"
 	else
 		enabled_value="0"
+	fi
+
+	if [ -z "$current_home_image" ]; then
+		uci set tg-paidmedia.main.home_image="$DEFAULT_HOME_IMAGE_URL"
 	fi
 
 	uci set tg-paidmedia.main.enabled="$enabled_value"
