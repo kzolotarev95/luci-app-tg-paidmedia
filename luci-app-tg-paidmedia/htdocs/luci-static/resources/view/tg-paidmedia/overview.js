@@ -1144,7 +1144,218 @@ return view.extend({
 				color: var(--tg-accent);
 			}
 
+			.tg-paidmedia-page-header {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: flex-start;
+				justify-content: space-between;
+				gap: 1rem;
+				margin: 0 0 1.35rem;
+			}
+
+			.tg-paidmedia-headline {
+				min-width: 0;
+			}
+
+			.tg-paidmedia-page-title {
+				margin: 0;
+				color: var(--tg-text);
+				font-size: clamp(2rem, 4vw, 2.7rem);
+				font-weight: 800;
+				line-height: 1.02;
+				letter-spacing: -.03em;
+			}
+
+			.tg-paidmedia-page-subtitle {
+				margin: .35rem 0 0;
+				color: var(--tg-text-soft);
+				font-size: .98rem;
+				font-weight: 500;
+				line-height: 1.5;
+			}
+
+			.tg-paidmedia-page-header-side,
+			.tg-paidmedia-header-status {
+				display: flex;
+				align-items: flex-start;
+				justify-content: flex-end;
+			}
+
+			.tg-paidmedia-top-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: .5rem;
+				padding: .62rem 1rem;
+				border-radius: 999px;
+				border: 1px solid var(--tg-border);
+				background: var(--tg-surface-soft);
+				color: var(--tg-text);
+				font-size: .96rem;
+				font-weight: 700;
+				line-height: 1;
+				white-space: nowrap;
+			}
+
+			.tg-paidmedia-top-badge::before {
+				content: "";
+				width: .46rem;
+				height: .46rem;
+				border-radius: 50%;
+				background: currentColor;
+				box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.04);
+			}
+
+			.tg-paidmedia-top-badge.is-running {
+				color: #b7f4bf;
+				border-color: rgba(124, 192, 109, 0.55);
+				background: rgba(80, 132, 68, 0.22);
+			}
+
+			.tg-paidmedia-top-badge.is-stopped {
+				color: #ffb5b5;
+				border-color: rgba(214, 103, 103, 0.45);
+				background: rgba(137, 53, 53, 0.22);
+			}
+
+			.tg-paidmedia-section,
+			.tg-paidmedia-page .cbi-section,
+			.tg-paidmedia-page .cbi-section-node {
+				border-radius: 18px;
+			}
+
+			.tg-paidmedia-section {
+				padding: 1.15rem 1.2rem 1.25rem;
+			}
+
+			.tg-paidmedia-section-title-strong {
+				font-size: 1rem;
+				font-weight: 800;
+				letter-spacing: -.01em;
+			}
+
+			.tg-paidmedia-section-headlined {
+				margin-bottom: 1.15rem;
+				padding-bottom: 1rem;
+				border-bottom: 1px solid var(--tg-border);
+			}
+
+			.tg-paidmedia-status-note {
+				margin: .45rem 0 0;
+				max-width: 48rem;
+			}
+
+			.tg-paidmedia-card {
+				min-height: 5.9rem;
+				padding: 1rem 1rem 1.05rem;
+				border-radius: 14px;
+			}
+
+			.tg-paidmedia-card-label {
+				font-size: .8rem;
+				letter-spacing: .03em;
+			}
+
+			.tg-paidmedia-card-value {
+				font-size: 1.02rem;
+				font-weight: 700;
+			}
+
+			.tg-paidmedia-actions {
+				gap: .7rem;
+				margin-top: 1.1rem;
+			}
+
+			.tg-paidmedia-action-btn,
+			.tg-paidmedia-btn-open {
+				min-width: 10.5rem;
+				padding: .78rem 1.15rem;
+				border-radius: 14px;
+				font-size: .96rem;
+				font-weight: 700;
+				transition: transform .14s ease, border-color .14s ease, background .14s ease;
+			}
+
+			.tg-paidmedia-action-btn:hover,
+			.tg-paidmedia-btn-open:hover {
+				transform: translateY(-1px);
+			}
+
+			.tg-paidmedia-btn-start {
+				border-color: rgba(111, 184, 128, 0.55);
+				background: rgba(74, 120, 84, 0.22);
+				color: #d6ffe0;
+			}
+
+			.tg-paidmedia-btn-restart {
+				border-color: rgba(91, 141, 227, 0.58);
+				background: rgba(62, 92, 154, 0.26);
+				color: #e0ebff;
+			}
+
+			.tg-paidmedia-btn-stop {
+				border-color: rgba(201, 111, 111, 0.5);
+				background: rgba(125, 58, 58, 0.22);
+				color: #ffd8d8;
+			}
+
+			.tg-paidmedia-btn-open {
+				border-color: rgba(91, 141, 227, 0.58) !important;
+				background: rgba(62, 92, 154, 0.26) !important;
+				color: #eef4ff !important;
+			}
+
+			.tg-paidmedia-callout-panel .tg-paidmedia-section-head,
+			.tg-paidmedia-log-panel .tg-paidmedia-section-head,
+			.tg-paidmedia-payments-panel .tg-paidmedia-section-head {
+				margin-bottom: 1rem;
+				padding-bottom: .95rem;
+				border-bottom: 1px solid var(--tg-border);
+			}
+
+			.tg-paidmedia-callout-panel .tg-paidmedia-section-subtitle,
+			.tg-paidmedia-log-panel .tg-paidmedia-section-subtitle,
+			.tg-paidmedia-payments-panel .tg-paidmedia-section-subtitle {
+				max-width: 48rem;
+			}
+
+			.tg-paidmedia-toolbar-btn {
+				border-radius: 14px;
+				padding: .72rem 1rem;
+				font-weight: 700;
+			}
+
+			.tg-paidmedia-page .cbi-map h3,
+			.tg-paidmedia-page .cbi-map h4,
+			.tg-paidmedia-page .cbi-section h3,
+			.tg-paidmedia-page .cbi-section legend {
+				font-size: 1.02rem;
+				font-weight: 800;
+				letter-spacing: -.01em;
+			}
+
+			.tg-paidmedia-page .cbi-section,
+			.tg-paidmedia-page .cbi-section-node {
+				padding: 1.1rem 1.1rem 1.15rem;
+			}
+
 			@media (max-width: 700px) {
+				.tg-paidmedia-page-header-side,
+				.tg-paidmedia-header-status {
+					justify-content: flex-start;
+				}
+
+				.tg-paidmedia-top-badge {
+					width: 100%;
+					justify-content: center;
+				}
+
+				.tg-paidmedia-action-btn,
+				.tg-paidmedia-btn-open,
+				.tg-paidmedia-toolbar-btn {
+					width: 100%;
+					min-width: 0;
+				}
+
 				.tg-paidmedia-shell {
 					padding: 0 10px;
 				}
@@ -1529,7 +1740,16 @@ return view.extend({
 		};
 	},
 
-	buildStatusSection: function(data, statusTarget, logTarget) {
+	buildHeaderStatus: function(data) {
+		var serviceStatus = data[1] || {};
+		var serviceMeta = this.extractServiceRunning(serviceStatus);
+
+		return E('span', {
+			'class': 'tg-paidmedia-top-badge ' + (serviceMeta.running ? 'is-running' : 'is-stopped')
+		}, [ serviceMeta.running ? '\u0420\u0430\u0431\u043e\u0442\u0430\u0435\u0442' : '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d' ]);
+	},
+
+	buildStatusSection: function(data, statusTarget, logTarget, headerStatusTarget) {
 		var initList = data[0] || {};
 		var serviceStatus = data[1] || {};
 		var botStatus = parseJSON((data[2] || {}).stdout, {});
@@ -1569,21 +1789,21 @@ return view.extend({
 		];
 		var actionRow = E('div', { 'class': 'tg-paidmedia-actions' }, [
 			E('button', {
-				'class': 'btn cbi-button cbi-button-action',
+				'class': 'btn cbi-button tg-paidmedia-action-btn tg-paidmedia-btn-start',
 				'click': ui.createHandlerFn(this, function() {
-					return this.handleServiceAction('start', statusTarget, logTarget);
+					return this.handleServiceAction('start', statusTarget, logTarget, headerStatusTarget);
 				})
 			}, [ '\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c' ]),
 			E('button', {
-				'class': 'btn cbi-button cbi-button-action',
+				'class': 'btn cbi-button tg-paidmedia-action-btn tg-paidmedia-btn-restart',
 				'click': ui.createHandlerFn(this, function() {
-					return this.handleServiceAction('restart', statusTarget, logTarget);
+					return this.handleServiceAction('restart', statusTarget, logTarget, headerStatusTarget);
 				})
 			}, [ '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c' ]),
 			E('button', {
-				'class': 'btn cbi-button cbi-button-negative',
+				'class': 'btn cbi-button tg-paidmedia-action-btn tg-paidmedia-btn-stop',
 				'click': ui.createHandlerFn(this, function() {
-					return this.handleServiceAction('stop', statusTarget, logTarget);
+					return this.handleServiceAction('stop', statusTarget, logTarget, headerStatusTarget);
 				})
 			}, [ '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c' ])
 		]);
@@ -1592,9 +1812,13 @@ return view.extend({
 			E('pre', {}, [ trimLog(lastException, 24) ])
 		]) : null;
 
-		return E('div', { 'class': 'tg-paidmedia-section' }, [
-			E('h3', {}, [ '\u0421\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u0430' ]),
-			E('p', { 'class': 'tg-paidmedia-note' }, [ '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0431\u0437\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u044b \u0431\u043e\u0442\u0430, \u0431\u0430\u043b\u0430\u043d\u0441\u0430 Stars \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u0432 \u043b\u043e\u0433\u0438.' ]),
+		return E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-status-panel' }, [
+			E('div', { 'class': 'tg-paidmedia-section-head tg-paidmedia-section-headlined' }, [
+				E('div', {}, [
+					E('h3', { 'class': 'tg-paidmedia-section-title tg-paidmedia-section-title-strong' }, [ '\u0421\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0441\u0435\u0440\u0432\u0438\u0441\u0430' ]),
+					E('p', { 'class': 'tg-paidmedia-note tg-paidmedia-status-note' }, [ '\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u043e\u0431\u0437\u043e\u0440 \u0440\u0430\u0431\u043e\u0442\u044b \u0431\u043e\u0442\u0430, \u0431\u0430\u043b\u0430\u043d\u0441\u0430 Stars \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0445 \u0441\u043e\u0431\u044b\u0442\u0438\u0439 \u0431\u0435\u0437 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u0430 \u0432 \u043b\u043e\u0433\u0438.' ])
+				])
+			]),
 			errorBlock || '',
 			E('div', { 'class': 'tg-paidmedia-grid' }, cards.map(function(card) {
 				return E('div', { 'class': 'tg-paidmedia-card' }, [
@@ -1608,8 +1832,10 @@ return view.extend({
 		]);
 	},
 
-	updatePanels: function(statusTarget, logTarget, data) {
-		dom.content(statusTarget, this.buildStatusSection(data, statusTarget, logTarget));
+	updatePanels: function(statusTarget, logTarget, headerStatusTarget, data) {
+		dom.content(statusTarget, this.buildStatusSection(data, statusTarget, logTarget, headerStatusTarget));
+		if (headerStatusTarget)
+			dom.content(headerStatusTarget, [ this.buildHeaderStatus(data) ]);
 		logTarget._rawText = trimLog((data[3] || {}).stdout || '', 200) || '\u041b\u043e\u0433\u0438 \u043f\u043e\u043a\u0430 \u043f\u0443\u0441\u0442\u044b.';
 		logTarget.innerHTML = renderLogMarkup(logTarget._rawText);
 	},
@@ -1621,7 +1847,7 @@ return view.extend({
 
 	toggleInfoPanel: function(infoSection, toggleButton) {
 		var collapsed = infoSection.classList.toggle('is-collapsed');
-		dom.content(toggleButton, [ collapsed ? '\u2B50 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' : '\u2B50 \u0421\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
+		dom.content(toggleButton, [ collapsed ? '\uD83D\uDCD6 \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' : '\uD83D\uDCD6 \u0421\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
 	},
 
 	togglePaymentsPanel: function(paymentsSection, toggleButton) {
@@ -1750,7 +1976,7 @@ return view.extend({
 		});
 	},
 
-	clearLogs: function(statusTarget, logTarget) {
+	clearLogs: function(statusTarget, logTarget, headerStatusTarget) {
 		ui.showModal('\u041e\u0447\u0438\u0441\u0442\u043a\u0430 \u0436\u0443\u0440\u043d\u0430', [
 			E('p', {}, [ '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430\u044e \u0441\u0438\u0441\u0442\u0435\u043c\u043d\u044b\u0439 log-\u0434\u0435\u043c\u043e\u043d, \u0447\u0442\u043e\u0431\u044b \u043e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u0442\u0435\u043a\u0443\u0449\u0438\u0439 ring buffer...' ])
 		]);
@@ -1764,7 +1990,7 @@ return view.extend({
 			return this.load();
 		}.bind(this)).then(function(data) {
 			ui.hideModal();
-			this.updatePanels(statusTarget, logTarget, data);
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
 			ui.addNotification(null, E('p', {}, [ '\u0416\u0443\u0440\u043d\u0430\u043b \u043e\u0447\u0438\u0449\u0435\u043d. \u0422\u0435\u043f\u0435\u0440\u044c \u0432 \u0431\u043B\u043E\u043A\u0435 \u0432\u0438\u0434\u0435\u043D \u0442\u043E\u043B\u044C\u043A\u043E \u0441\u0432\u0435\u0436\u0438\u0439 \u0445\u0432\u043E\u0441\u0442 \u043F\u043E\u0441\u043B\u0435 \u043F\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043A\u0430 logd.' ]), 'info');
 		}.bind(this)).catch(function(err) {
 			ui.hideModal();
@@ -1772,13 +1998,13 @@ return view.extend({
 		});
 	},
 
-	pollPanels: function(statusTarget, logTarget) {
+	pollPanels: function(statusTarget, logTarget, headerStatusTarget) {
 		return this.load().then(function(data) {
-			this.updatePanels(statusTarget, logTarget, data);
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
 		}.bind(this));
 	},
 
-	handleServiceAction: function(action, statusTarget, logTarget) {
+	handleServiceAction: function(action, statusTarget, logTarget, headerStatusTarget) {
 		var actionLabel = {
 			start: '\u0437\u0430\u043f\u0443\u0441\u043a\u0430',
 			restart: '\u043f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u043a\u0430',
@@ -1800,7 +2026,7 @@ return view.extend({
 			var serviceMeta = this.extractServiceRunning(serviceStatus);
 			var failureReason = String(botStatus.last_exception || botStatus.last_error || '').trim();
 
-			this.updatePanels(statusTarget, logTarget, data);
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
 
 			if (action === 'stop' && serviceMeta.running) {
 				throw new Error('\u0421\u0435\u0440\u0432\u0438\u0441 \u043f\u043e\u043a\u0430 \u0435\u0449\u0435 \u043d\u0435 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u043b\u0441\u044f. \u041e\u0431\u043d\u043e\u0432\u0438\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0447\u0435\u0440\u0435\u0437 \u043f\u0430\u0440\u0443 \u0441\u0435\u043a\u0443\u043d\u0434.');
@@ -1819,19 +2045,20 @@ return view.extend({
 	},
 
 	render: function(data) {
-		var statusTarget = E('div', { 'class': 'tg-paidmedia-section' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0441\u0442\u0430\u0442\u0443\u0441\u0430...' ]);
+		var headerStatusTarget = E('div', { 'class': 'tg-paidmedia-header-status' }, [ '\u041f\u0440\u043E\u0432\u0435\u0440\u043A\u0430...' ]);
+		var statusTarget = E('div', { 'class': 'tg-paidmedia-status-host' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0441\u0442\u0430\u0442\u0443\u0441\u0430...' ]);
 		var logTarget = E('div', { 'class': 'tg-paidmedia-log' }, [ '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043b\u043e\u0433\u043e\u0432...' ]);
 		var infoToggle = E('button', {
-			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-info-toggle',
+			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-info-toggle tg-paidmedia-btn-open',
 			'click': ui.createHandlerFn(this, function() {
 				this.toggleInfoPanel(infoSection, infoToggle);
 			})
-		}, [ '\u2B50 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
-		var infoSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-info-panel is-collapsed' }, [
+		}, [ '\uD83D\uDCD6 \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
+		var infoSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-info-panel tg-paidmedia-callout-panel is-collapsed' }, [
 			E('div', { 'class': 'tg-paidmedia-section-head' }, [
 				E('div', {}, [
-					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u0412\u044B\u0432\u043E\u0434 \u0437\u0432\u0435\u0437\u0434' ]),
-					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0431\u043B\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C, \u043A\u0430\u043A Telegram Stars \u0432\u044B\u0432\u043E\u0434\u044F\u0442\u0441\u044F \u0443 \u0431\u043E\u0442\u0430 \u0438 \u043F\u043E\u0447\u0435\u043C\u0443 \u043A\u043D\u043E\u043F\u043A\u0430 reward \u043C\u043E\u0436\u0435\u0442 \u043D\u0435 \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C\u0441\u044F.' ])
+					E('h3', { 'class': 'tg-paidmedia-section-title tg-paidmedia-section-title-strong' }, [ '\u0412\u044B\u0432\u043E\u0434 \u0437\u0432\u0435\u0437\u0434' ]),
+					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u041A\u0440\u0430\u0442\u043A\u0430\u044F \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044F \u043F\u043E Telegram Stars, Fragment \u0438 \u043F\u0440\u0438\u0447\u0438\u043D\u0430\u043C, \u043F\u043E\u0447\u0435\u043C\u0443 reward \u043C\u043E\u0436\u0435\u0442 \u043D\u0435 \u043F\u043E\u044F\u0432\u0438\u0442\u044C\u0441\u044F \u0441\u0440\u0430\u0437\u0443.' ])
 				]),
 				E('div', { 'class': 'tg-paidmedia-info-toolbar' }, [
 					infoToggle
@@ -1862,7 +2089,7 @@ return view.extend({
 		var logClear = E('button', {
 			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-log-clear',
 			'click': ui.createHandlerFn(this, function() {
-				return this.clearLogs(statusTarget, logTarget);
+				return this.clearLogs(statusTarget, logTarget, headerStatusTarget);
 			})
 		}, [ '\uD83E\uDDF9 \u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u043B\u043E\u0433\u0438' ]);
 		var logSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-log-panel is-collapsed' }, [
@@ -1902,25 +2129,25 @@ return view.extend({
 			var botFormNode = renderedForms[0];
 			var paymentsFormNode = renderedForms[1];
 
-			this.updatePanels(statusTarget, logTarget, data);
-			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget));
+			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
+			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget, headerStatusTarget));
 			dom.content(paymentsBody, [ paymentsFormNode ]);
 			this.decoratePaymentTooltips(paymentsBody);
 
 			var pageNode = E('div', { 'class': 'tg-paidmedia-page' }, [
 				this.renderStyles(),
 				E('div', { 'class': 'tg-paidmedia-shell' }, [
-					E('div', { 'class': 'tg-paidmedia-hero' }, [
-						E('div', { 'class': 'tg-paidmedia-logo' }, [
-							E('div', { 'class': 'tg-paidmedia-logo-mark' }),
-							E('div', { 'class': 'tg-paidmedia-logo-wordmark' }, [
-								E('p', { 'class': 'tg-paidmedia-logo-title' }, [ 'TG Paid Media' ]),
-								E('p', { 'class': 'tg-paidmedia-logo-subtitle' }, [ 'Telegram Stars' ])
-							])
+					E('div', { 'class': 'tg-paidmedia-page-header' }, [
+						E('div', { 'class': 'tg-paidmedia-headline' }, [
+							E('h1', { 'class': 'tg-paidmedia-page-title' }, [ 'TG Paid Media' ]),
+							E('p', { 'class': 'tg-paidmedia-page-subtitle' }, [ 'LuCI-\u043F\u0430\u043D\u0435\u043B\u044C \u0443\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F Telegram Stars' ])
+						]),
+						E('div', { 'class': 'tg-paidmedia-page-header-side' }, [
+							headerStatusTarget
 						])
 					]),
-					statusTarget,
 					infoSection,
+					statusTarget,
 					logSection,
 					E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-form-wrap' }, [ botFormNode ]),
 					paymentsSection
