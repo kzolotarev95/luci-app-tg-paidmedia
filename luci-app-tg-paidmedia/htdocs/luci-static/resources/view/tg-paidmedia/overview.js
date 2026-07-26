@@ -28,6 +28,65 @@ var callServiceList = rpc.declare({
 	expect: { '': {} }
 });
 
+var PAYMENT_FIELD_HELP = {
+	platega_enabled: {
+		title: 'Включить Platega / СБП',
+		text: 'Включайте только после того, как заполнены merchant ID и secret key из кабинета Platega. Иначе бот не сможет создать счет или проверить оплату.'
+	},
+	platega_base_url: {
+		title: 'Базовый URL Platega',
+		text: 'Обычно оставляют стандартный адрес https://app.platega.io. Меняйте только если Platega выдала вам другой базовый URL для API или тестового контура.'
+	},
+	platega_merchant_id: {
+		title: 'ID мерчанта Platega',
+		text: 'Берется в кабинете Platega: магазин, мерчант или раздел API/интеграция. Это идентификатор вашего магазина в системе.'
+	},
+	platega_secret_key: {
+		title: 'Секретный ключ Platega',
+		text: 'Берется в кабинете Platega в разделе API, security или интеграция. Это секрет для запросов и проверки webhook, не показывайте его другим.'
+	},
+	platega_callback_url: {
+		title: 'URL callback для Platega',
+		text: 'Это публичный внешний URL, на который Platega будет отправлять webhook после оплаты. Его вы указываете в кабинете Platega, а внутри он должен вести на ваш host, port и path.'
+	},
+	platega_success_url: {
+		title: 'URL успешного редиректа',
+		text: 'Это ваш адрес, куда покупателя нужно вернуть после успешной оплаты. Обычно это страница спасибо, инструкция или витрина.'
+	},
+	platega_fail_url: {
+		title: 'URL редиректа при ошибке',
+		text: 'Это ваш адрес, куда покупатель попадет при отмене или ошибке оплаты. Обычно делают страницу с повторной попыткой или пояснением.'
+	},
+	platega_redirect_url: {
+		title: 'URL редиректа по умолчанию',
+		text: 'Запасной адрес, если Platega использует общий redirect. Если не уверены, можно дать ту же ссылку, что и для успешного редиректа.'
+	},
+	platega_webhook_host: {
+		title: 'Хост прослушивания webhook',
+		text: 'Это локальный адрес, на котором бот слушает входящие webhook. Обычно оставляют 0.0.0.0, чтобы сервис принимал запросы на всех интерфейсах роутера.'
+	},
+	platega_webhook_port: {
+		title: 'Порт прослушивания webhook',
+		text: 'Это локальный порт, который слушает бот. Его нужно пробросить наружу на роутере или reverse proxy, если callback URL смотрит из интернета на это устройство.'
+	},
+	platega_webhook_path: {
+		title: 'Путь webhook',
+		text: 'Это локальный URL-путь webhook. Его нужно добавить в конец публичного callback URL, который вы прописываете в кабинете Platega.'
+	},
+	platega_status_poll_interval: {
+		title: 'Интервал опроса статуса СБП (секунды)',
+		text: 'Это внутренняя настройка бота, а не данные из Platega. Показывает, как часто бот будет перепроверять статус платежа, если webhook еще не пришел.'
+	},
+	platega_status_timeout: {
+		title: 'Таймаут ожидания статуса СБП (секунды)',
+		text: 'Это внутренняя настройка бота. Она определяет, сколько максимум ждать подтверждения оплаты перед остановкой опроса.'
+	},
+	platega_http_timeout: {
+		title: 'HTTP-таймаут Platega (секунды)',
+		text: 'Это внутренняя настройка бота. Она задает, сколько ждать ответа от API Platega на один запрос до ошибки по таймауту.'
+	}
+};
+
 function parseJSON(text, fallback) {
 	try {
 		return JSON.parse(text || '');
@@ -440,7 +499,7 @@ return view.extend({
 			}
 
 			.tg-paidmedia-payments-panel {
-				overflow: hidden;
+				overflow: visible;
 			}
 
 			.tg-paidmedia-log-toolbar {
@@ -500,6 +559,7 @@ return view.extend({
 
 			.tg-paidmedia-payments-body {
 				display: block;
+				overflow: visible;
 			}
 
 			.tg-paidmedia-log-panel.is-collapsed .tg-paidmedia-log-body {
@@ -550,6 +610,63 @@ return view.extend({
 			.tg-paidmedia-info-links a:hover {
 				color: #9cecff;
 				text-decoration: underline;
+			}
+
+			.tg-paidmedia-help-title {
+				display: inline-flex;
+				align-items: center;
+				gap: .45rem;
+				flex-wrap: wrap;
+			}
+
+			.tg-paidmedia-help {
+				position: relative;
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				width: 1.2rem;
+				height: 1.2rem;
+				border: 1px solid rgba(103, 215, 255, 0.28);
+				border-radius: 999px;
+				background: linear-gradient(180deg, rgba(41, 74, 116, 0.92), rgba(25, 45, 79, 0.96));
+				color: #dff7ff;
+				font-size: .76rem;
+				font-weight: 900;
+				line-height: 1;
+				cursor: help;
+				box-shadow: 0 8px 20px rgba(8, 16, 34, 0.26);
+			}
+
+			.tg-paidmedia-help-bubble {
+				position: absolute;
+				top: 50%;
+				left: calc(100% + .65rem);
+				width: min(24rem, calc(100vw - 6rem));
+				padding: .8rem .9rem;
+				border: 1px solid rgba(103, 215, 255, 0.24);
+				border-radius: 16px;
+				background: linear-gradient(180deg, rgba(12, 18, 31, 0.98), rgba(9, 13, 24, 0.98));
+				color: var(--tg-text-soft);
+				font-size: .84rem;
+				font-weight: 500;
+				line-height: 1.55;
+				text-transform: none;
+				letter-spacing: normal;
+				box-shadow: 0 22px 48px rgba(0, 0, 0, 0.36);
+				transform: translateY(-50%) translateX(-6px);
+				opacity: 0;
+				visibility: hidden;
+				pointer-events: none;
+				transition: opacity .16s ease, transform .16s ease, visibility .16s ease;
+				z-index: 30;
+			}
+
+			.tg-paidmedia-help:hover .tg-paidmedia-help-bubble,
+			.tg-paidmedia-help:focus .tg-paidmedia-help-bubble,
+			.tg-paidmedia-help:focus-visible .tg-paidmedia-help-bubble {
+				opacity: 1;
+				visibility: visible;
+				transform: translateY(-50%) translateX(0);
 			}
 
 			.tg-paidmedia-log {
@@ -771,6 +888,19 @@ return view.extend({
 				.tg-paidmedia-toolbar-btn {
 					width: 100%;
 					min-width: 0;
+				}
+
+				.tg-paidmedia-help-bubble {
+					top: calc(100% + .6rem);
+					left: 50%;
+					width: min(18rem, calc(100vw - 3rem));
+					transform: translateX(-50%) translateY(-6px);
+				}
+
+				.tg-paidmedia-help:hover .tg-paidmedia-help-bubble,
+				.tg-paidmedia-help:focus .tg-paidmedia-help-bubble,
+				.tg-paidmedia-help:focus-visible .tg-paidmedia-help-bubble {
+					transform: translateX(-50%) translateY(0);
 				}
 			}
 		` ]);
@@ -1016,6 +1146,87 @@ return view.extend({
 		o.placeholder = '25';
 
 		return m.render();
+	},
+
+	findClosestValueNode: function(node) {
+		while (node) {
+			if (node.classList && node.classList.contains('cbi-value'))
+				return node;
+
+			node = node.parentNode;
+		}
+
+		return null;
+	},
+
+	findPaymentValueNode: function(root, fieldName, titleText) {
+		var selectors = [
+			'.cbi-value[data-name="' + fieldName + '"]',
+			'.cbi-value[data-option="' + fieldName + '"]',
+			'.cbi-value[data-field="' + fieldName + '"]',
+			'[name="' + fieldName + '"]',
+			'[name$=".' + fieldName + '"]',
+			'[id="' + fieldName + '"]',
+			'[id$="' + fieldName + '"]'
+		];
+		var i, node, titles;
+
+		for (i = 0; i < selectors.length; i++) {
+			try {
+				node = root.querySelector(selectors[i]);
+			}
+			catch (err) {
+				node = null;
+			}
+
+			if (node)
+				return this.findClosestValueNode(node) || node;
+		}
+
+		titles = root.querySelectorAll('.cbi-value-title');
+		for (i = 0; i < titles.length; i++) {
+			if (String(titles[i].textContent || '').trim() === String(titleText || '').trim())
+				return this.findClosestValueNode(titles[i]);
+		}
+
+		return null;
+	},
+
+	createPaymentHelpNode: function(text) {
+		var badge = document.createElement('span');
+		var bubble = document.createElement('span');
+
+		badge.className = 'tg-paidmedia-help';
+		badge.tabIndex = 0;
+		badge.setAttribute('role', 'button');
+		badge.setAttribute('aria-label', text);
+		badge.appendChild(document.createTextNode('?'));
+
+		bubble.className = 'tg-paidmedia-help-bubble';
+		bubble.textContent = text;
+		badge.appendChild(bubble);
+
+		return badge;
+	},
+
+	decoratePaymentTooltips: function(root) {
+		var self = this;
+
+		Object.keys(PAYMENT_FIELD_HELP).forEach(function(fieldName) {
+			var meta = PAYMENT_FIELD_HELP[fieldName] || {};
+			var valueNode = self.findPaymentValueNode(root, fieldName, meta.title);
+			var titleNode;
+
+			if (!valueNode)
+				return;
+
+			titleNode = valueNode.querySelector('.cbi-value-title');
+			if (!titleNode || titleNode.querySelector('.tg-paidmedia-help'))
+				return;
+
+			titleNode.classList.add('tg-paidmedia-help-title');
+			titleNode.appendChild(self.createPaymentHelpNode(meta.text || ''));
+		});
 	},
 
 	extractServiceRunning: function(serviceStatus) {
@@ -1390,6 +1601,7 @@ return view.extend({
 			this.updatePanels(statusTarget, logTarget, data);
 			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget));
 			dom.content(paymentsBody, [ paymentsFormNode ]);
+			this.decoratePaymentTooltips(paymentsBody);
 
 			return E('div', { 'class': 'tg-paidmedia-page' }, [
 				this.renderStyles(),
