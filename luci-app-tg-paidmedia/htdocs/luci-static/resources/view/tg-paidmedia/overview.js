@@ -795,6 +795,10 @@ return view.extend({
 				overflow: hidden;
 			}
 
+			.tg-paidmedia-settings-panel {
+				overflow: hidden;
+			}
+
 			.tg-paidmedia-payments-panel {
 				overflow: visible;
 			}
@@ -806,6 +810,12 @@ return view.extend({
 			}
 
 			.tg-paidmedia-info-toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: .55rem;
+			}
+
+			.tg-paidmedia-settings-toolbar {
 				display: flex;
 				flex-wrap: wrap;
 				gap: .55rem;
@@ -842,6 +852,12 @@ return view.extend({
 				color: var(--tg-secondary-button-text);
 			}
 
+			.tg-paidmedia-settings-toggle {
+				border-color: var(--tg-secondary-button-border);
+				background: var(--tg-secondary-button-bg);
+				color: var(--tg-secondary-button-text);
+			}
+
 			.tg-paidmedia-payments-toggle {
 				border-color: var(--tg-secondary-button-border);
 				background: var(--tg-secondary-button-bg);
@@ -856,6 +872,10 @@ return view.extend({
 				display: block;
 			}
 
+			.tg-paidmedia-settings-body {
+				display: block;
+			}
+
 			.tg-paidmedia-payments-body {
 				display: block;
 				overflow: visible;
@@ -866,6 +886,10 @@ return view.extend({
 			}
 
 			.tg-paidmedia-info-panel.is-collapsed .tg-paidmedia-info-body {
+				display: none;
+			}
+
+			.tg-paidmedia-settings-panel.is-collapsed .tg-paidmedia-settings-body {
 				display: none;
 			}
 
@@ -1851,6 +1875,11 @@ return view.extend({
 		dom.content(toggleButton, [ collapsed ? '\uD83D\uDCD6 \u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' : '\uD83D\uDCD6 \u0421\u043A\u0440\u044B\u0442\u044C \u0438\u043D\u0441\u0442\u0440\u0443\u043A\u0446\u0438\u044E' ]);
 	},
 
+	toggleSettingsPanel: function(settingsSection, toggleButton) {
+		var collapsed = settingsSection.classList.toggle('is-collapsed');
+		dom.content(toggleButton, [ collapsed ? '\u2699\uFE0F \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438' : '\u2699\uFE0F \u0421\u043A\u0440\u044B\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438' ]);
+	},
+
 	togglePaymentsPanel: function(paymentsSection, toggleButton) {
 		var collapsed = paymentsSection.classList.toggle('is-collapsed');
 		dom.content(toggleButton, [ collapsed ? '\uD83D\uDCB3 \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u0441\u0438\u0441\u0442\u0435\u043c\u044B' : '\uD83D\uDCB3 \u0421\u043A\u0440\u044B\u0442\u044C \u0441\u0438\u0441\u0442\u0435\u043c\u044B' ]);
@@ -2069,6 +2098,25 @@ return view.extend({
 				this.buildWithdrawalInfoSection()
 			])
 		]);
+		var settingsToggle = E('button', {
+			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-settings-toggle',
+			'click': ui.createHandlerFn(this, function() {
+				this.toggleSettingsPanel(settingsSection, settingsToggle);
+			})
+		}, [ '\u2699\uFE0F \u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438' ]);
+		var settingsBody = E('div', { 'class': 'tg-paidmedia-settings-body' });
+		var settingsSection = E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-form-wrap tg-paidmedia-settings-panel is-collapsed' }, [
+			E('div', { 'class': 'tg-paidmedia-section-head' }, [
+				E('div', {}, [
+					E('h3', { 'class': 'tg-paidmedia-section-title' }, [ '\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0431\u043E\u0442\u0430' ]),
+					E('p', { 'class': 'tg-paidmedia-section-subtitle' }, [ '\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u0431\u043B\u043E\u043A, \u0447\u0442\u043E\u0431\u044B \u0438\u0437\u043C\u0435\u043D\u0438\u0442\u044C \u0442\u043E\u043A\u0435\u043D, \u0430\u0434\u043C\u0438\u043D\u043E\u0432, \u043F\u0443\u0442\u0438 \u0438 \u0434\u0440\u0443\u0433\u0438\u0435 \u0431\u0430\u0437\u043E\u0432\u044B\u0435 \u043F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B \u0431\u043E\u0442\u0430.' ])
+				]),
+				E('div', { 'class': 'tg-paidmedia-settings-toolbar' }, [
+					settingsToggle
+				])
+			]),
+			settingsBody
+		]);
 		var paymentsToggle = E('button', {
 			'class': 'btn cbi-button tg-paidmedia-toolbar-btn tg-paidmedia-payments-toggle',
 			'click': ui.createHandlerFn(this, function() {
@@ -2132,6 +2180,7 @@ return view.extend({
 
 			this.updatePanels(statusTarget, logTarget, headerStatusTarget, data);
 			poll.add(L.bind(this.pollPanels, this, statusTarget, logTarget, headerStatusTarget));
+			dom.content(settingsBody, [ botFormNode ]);
 			dom.content(paymentsBody, [ paymentsFormNode ]);
 			this.decoratePaymentTooltips(paymentsBody);
 
@@ -2150,7 +2199,7 @@ return view.extend({
 					infoSection,
 					statusTarget,
 					logSection,
-					E('div', { 'class': 'tg-paidmedia-section tg-paidmedia-form-wrap' }, [ botFormNode ]),
+					settingsSection,
 					paymentsSection
 				])
 			]);
