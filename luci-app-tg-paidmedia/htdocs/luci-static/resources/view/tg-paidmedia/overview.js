@@ -1485,12 +1485,14 @@ return view.extend({
 			}
 
 			.tg-paidmedia-inline-guide-yellow {
-				width: min(100%, 34rem);
-				max-width: 34rem;
+				display: inline-block;
+				width: auto;
+				max-width: min(100%, 34rem);
 				margin-right: auto;
 				border-color: #d6ab2f;
 				background: var(--tg-surface);
 				box-shadow: 0 8px 20px rgba(169, 121, 18, 0.08);
+				vertical-align: top;
 			}
 
 			.tg-paidmedia-inline-guide-yellow summary {
