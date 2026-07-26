@@ -83,8 +83,21 @@ wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/
 ```text
 LuCI -> Services -> TG Paid Media
 ```
+## Удаление
+
+Если нужно полностью удалить проект:
+
+```sh
+wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/main/openwrt/uninstall.sh?v=$(date +%s)" | sh
+```
 
 ### 3. Заполните базовые параметры бота
+
+<p align="center">
+
+<img width="846" height="850" alt="chrome_nLomA3IFvm" src="https://github.com/user-attachments/assets/48371ab0-af19-4b0f-a2a2-184611c01e67" />
+</p>
+
 
 В настройках укажите:
 
@@ -94,27 +107,6 @@ LuCI -> Services -> TG Paid Media
 - `Welcome text`
 - при желании домашнюю шапку с изображением
 
-### 4. Включите и запустите сервис
-
-Включите бота, сохраните конфиг и запустите или перезапустите сервис из блока статуса.
-
-
-После этого у вас уже будет рабочий paid media бот с поддержкой Telegram Stars.
-
-## Платежи
-
-### Telegram Stars
-
-Бот поддерживает Telegram Stars как нативный способ оплаты платного контента внутри Telegram.
-
-### Platega
-
-Используйте `Platega`, если хотите принимать RUB-платежи через СБП. Бот отслеживает создание заказа, статус оплаты и последние платежные события.
-
-### YooMoney
-
-Используйте `YooMoney`, если вам нужна прямая RUB-страница оплаты и подтверждение через webhook.
-
 В проект уже входят:
 
 - настройки webhook host, port и path
@@ -122,21 +114,6 @@ LuCI -> Services -> TG Paid Media
 - проверка `notification secret`
 - мини-проверка YooMoney в LuCI
 - опциональный reverse SSH tunnel для роутеров за NAT или без публичного входящего порта
-
-## Что дает LuCI
-
-Страница LuCI сделана так, чтобы быстро отвечать на главные вопросы:
-
-- Бот сейчас запущен или нет?
-- Включен ли автозапуск?
-- Сколько товаров и администраторов настроено?
-- Сколько было покупок через Stars, СБП и YooMoney?
-- Какое последнее платежное событие пришло?
-- Почему сервис перезапускался?
-- В порядке ли `YooMoney secret`, `webhook` и `reverse tunnel`?
-
-Именно эта часть делает проект не просто устанавливаемым, а реально удобным в эксплуатации.
-
 
 ## Структура проекта
 
@@ -174,14 +151,4 @@ luci-app-tg-paidmedia/
 - Для владельцев роутеров и homelab, которым нужна Telegram-автоматизация с платежами.
 - Для тех, кому нужен практичный способ вывести YooMoney webhook из NATed-окружения.
 
-## Удаление
 
-Если нужно полностью удалить проект:
-
-```sh
-wget -qO- "https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/main/openwrt/uninstall.sh?v=$(date +%s)" | sh
-```
-
-## Лицензия
-
-MIT
