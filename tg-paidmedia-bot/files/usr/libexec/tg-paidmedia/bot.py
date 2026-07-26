@@ -3092,19 +3092,19 @@ class TelegramPaidMediaBot:
             nav_row = []
             nav_row.append(
                 {
-                    "text": "⬅️ Назад" if page > 0 else "·",
+                    "text": "⬅️" if page > 0 else "·",
                     "callback_data": "catalogpage:{0}".format(page - 1) if page > 0 else "catalognoop",
                 }
             )
             nav_row.append(
                 {
-                    "text": "{0}/{1}".format(page + 1, total_pages),
+                    "text": "Стр. {0} из {1}".format(page + 1, total_pages),
                     "callback_data": "catalognoop",
                 }
             )
             nav_row.append(
                 {
-                    "text": "Вперёд ➡️" if page + 1 < total_pages else "·",
+                    "text": "➡️" if page + 1 < total_pages else "·",
                     "callback_data": "catalogpage:{0}".format(page + 1) if page + 1 < total_pages else "catalognoop",
                 }
             )
