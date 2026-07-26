@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import datetime
+import html
 import http.client
 import http.server
 import json
@@ -793,6 +794,7 @@ class TelegramPaidMediaBot:
                 "chat_id": int(chat_id),
                 "user_id": int(user.get("id") or chat_id),
                 "user_name": compact_name(user),
+                "user_username": str(user.get("username") or ""),
                 "amount_rub": rub_price,
                 "status": "CREATED",
                 "delivery_state": "pending",
@@ -926,6 +928,7 @@ class TelegramPaidMediaBot:
                 "СБП / Platega",
                 user_id=order.get("user_id"),
                 user_name=order.get("user_name", ""),
+                user_username=order.get("user_username", ""),
                 item=item,
                 amount_text="{0} RUB".format(
                     self.format_rub_amount(order.get("amount_rub", 0))
@@ -1018,6 +1021,7 @@ class TelegramPaidMediaBot:
         payment_method,
         user_id=None,
         user_name="",
+        user_username="",
         item=None,
         amount_text="",
         order_id=None,
@@ -1028,28 +1032,53 @@ class TelegramPaidMediaBot:
 
         lines = [
             "Новая покупка",
-            "Способ оплаты: {0}".format(payment_method),
+            "Способ оплаты: {0}".format(html.escape(str(payment_method))),
         ]
 
         if item:
             lines.append(
-                "Пост: #{0} {1}".format(item.get("id"), item.get("title") or "-")
+                "Пост: #{0} {1}".format(
+                    html.escape(str(item.get("id"))),
+                    html.escape(item.get("title") or "-"),
+                )
             )
         if amount_text:
-            lines.append("Сумма: {0}".format(amount_text))
+            lines.append("Сумма: {0}".format(html.escape(str(amount_text))))
         if user_name or user_id:
-            lines.append(
-                "Покупатель: {0} (ID: {1})".format(user_name or "-", user_id or "-")
+            display_name = user_name or ("@" + str(user_username) if user_username else "-")
+            safe_user_name = html.escape(
+                display_name
             )
+            safe_user_id = html.escape(str(user_id or "-"))
+            profile_link = ""
+            if user_username:
+                profile_link = "https://t.me/{0}".format(
+                    urllib.parse.quote(str(user_username).lstrip("@"))
+                )
+            elif user_id:
+                profile_link = "tg://user?id={0}".format(int(user_id))
+
+            if profile_link:
+                lines.append(
+                    'Покупатель: <a href="{0}">{1}</a> (ID: {2})'.format(
+                        html.escape(profile_link, quote=True),
+                        safe_user_name,
+                        safe_user_id,
+                    )
+                )
+            else:
+                lines.append(
+                    "Покупатель: {0} (ID: {1})".format(safe_user_name, safe_user_id)
+                )
         if order_id is not None:
-            lines.append("Заказ: #{0}".format(order_id))
+            lines.append("Заказ: #{0}".format(html.escape(str(order_id))))
         if received_at:
-            lines.append("Время: {0}".format(received_at))
+            lines.append("Время: {0}".format(html.escape(str(received_at))))
 
         text = "\n".join(lines)
         for admin_id in sorted(self.admin_ids):
             try:
-                self.send_message(admin_id, text)
+                self.send_message(admin_id, text, parse_mode="HTML")
             except Exception as exc:
                 LOG.warning(
                     "Failed to notify admin %s about purchase: %s", admin_id, exc
@@ -2202,6 +2231,7 @@ class TelegramPaidMediaBot:
         purchase_info = {
             "user_id": user.get("id"),
             "user_name": compact_name(user),
+            "user_username": str(user.get("username") or ""),
             "payload": purchase_payload,
             "received_at": utc_now(),
             "item_id": item.get("id") if item else None,
@@ -2237,6 +2267,7 @@ class TelegramPaidMediaBot:
             "Telegram Stars",
             user_id=purchase_info.get("user_id"),
             user_name=purchase_info.get("user_name", ""),
+            user_username=purchase_info.get("user_username", ""),
             item=item,
             amount_text=(
                 "{0} Stars".format(item.get("price"))
