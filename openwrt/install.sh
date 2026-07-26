@@ -407,12 +407,13 @@ main() {
 	start_service
 
 	log ""
-	log "TG Paid Media installed."
+	log "TG Paid Media установлен."
 	if [ -n "$(uci -q get tg-paidmedia.main.token || true)" ]; then
-		log "Bot service started. Open LuCI -> Services -> TG Paid Media."
+		log "Сервис бота запущен. Откройте LuCI -> Services -> TG Paid Media."
 	else
-		log "Open LuCI -> Services -> TG Paid Media and add your bot token."
+		log "Откройте LuCI -> Services -> TG Paid Media и добавьте токен бота."
 	fi
+	log "Поддержать проект: Сбербанк: 4817 7602 5832 3256"
 }
 
 main "$@"

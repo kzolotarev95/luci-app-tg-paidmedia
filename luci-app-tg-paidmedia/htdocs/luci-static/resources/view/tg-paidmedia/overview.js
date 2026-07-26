@@ -1485,6 +1485,9 @@ return view.extend({
 			}
 
 			.tg-paidmedia-inline-guide-yellow {
+				width: min(100%, 42rem);
+				max-width: 42rem;
+				margin-right: auto;
 				border-color: #d6ab2f;
 				background: linear-gradient(180deg, #fff9da 0%, #fff2b8 100%);
 				box-shadow: 0 10px 24px rgba(169, 121, 18, 0.10);
