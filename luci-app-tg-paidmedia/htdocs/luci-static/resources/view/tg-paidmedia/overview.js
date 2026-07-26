@@ -118,6 +118,68 @@ function extractSyslogStamp(line) {
 	return match ? match[0] : '';
 }
 
+function parseSyslogStamp(stamp) {
+	var match = String(stamp || '').match(/^[A-Z][a-z]{2}\s+([A-Z][a-z]{2})\s+(\d+)\s+(\d{2}):(\d{2}):(\d{2})\s+(\d{4})$/);
+	var months, monthIndex;
+
+	if (!match)
+		return null;
+
+	months = {
+		Jan: 0,
+		Feb: 1,
+		Mar: 2,
+		Apr: 3,
+		May: 4,
+		Jun: 5,
+		Jul: 6,
+		Aug: 7,
+		Sep: 8,
+		Oct: 9,
+		Nov: 10,
+		Dec: 11
+	};
+	monthIndex = months[match[1]];
+
+	if (monthIndex == null)
+		return null;
+
+	return new Date(
+		Number(match[6]),
+		monthIndex,
+		Number(match[2]),
+		Number(match[3]),
+		Number(match[4]),
+		Number(match[5])
+	);
+}
+
+function collectStartLines(logText) {
+	return splitLogLines(logText).filter(function(line) {
+		return /Starting Telegram Paid Media bot/.test(line);
+	});
+}
+
+function buildRecentStartStats(logText) {
+	var startLines = collectStartLines(logText);
+	var nowMs = Date.now();
+	var oneHourMs = 60 * 60 * 1000;
+	var recentStarts = [];
+
+	startLines.forEach(function(line) {
+		var stamp = extractSyslogStamp(line);
+		var parsed = parseSyslogStamp(stamp);
+
+		if (parsed && (nowMs - parsed.getTime()) <= oneHourMs)
+			recentStarts.push(stamp);
+	});
+
+	return {
+		countLastHour: recentStarts.length,
+		recentStarts: recentStarts.slice(-4)
+	};
+}
+
 function isBotTracebackLine(line) {
 	var source = String(line || '');
 
@@ -161,10 +223,7 @@ function firstMeaningfulLine(text) {
 }
 
 function buildRestartInsight(logText, botStatus) {
-	var logLines = splitLogLines(logText);
-	var startLines = logLines.filter(function(line) {
-		return /Starting Telegram Paid Media bot/.test(line);
-	});
+	var startLines = collectStartLines(logText);
 	var lastStartLine = startLines.length ? startLines[startLines.length - 1] : '';
 	var lastStartStamp = extractSyslogStamp(lastStartLine) || String(botStatus.last_poll_at || '-');
 	var lastError = String(botStatus.last_error || '').trim();
@@ -1871,6 +1930,7 @@ return view.extend({
 		var stats = botStatus.stats || {};
 		var lastException = String(botStatus.last_exception || '').trim();
 		var restartInsight = buildRestartInsight(filteredLogText, botStatus);
+		var startStats = buildRecentStartStats(filteredLogText);
 		var runningBadge = E('span', {
 			'class': 'tg-paidmedia-badge ' + (serviceMeta.running ? 'tg-paidmedia-badge-running' : 'tg-paidmedia-badge-stopped')
 		}, [ serviceMeta.running ? '\u0417\u0430\u043f\u0443\u0449\u0435\u043d' : '\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u043b\u0435\u043d' ]);
@@ -1886,6 +1946,8 @@ return view.extend({
 			{ label: 'SBP orders', value: String(stats.sbp_orders_created || 0) },
 			{ label: 'SBP delivered', value: String(stats.sbp_orders_paid || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0441\u0442\u0430\u0440\u0442', value: restartInsight.lastStartAt || '-', subtle: true },
+			{ label: '\u0420\u0435\u0441\u0442\u0430\u0440\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0441', value: String(startStats.countLastHour || 0) },
+			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0441\u0442\u0430\u0440\u0442\u044B', value: startStats.recentStarts.length ? startStats.recentStarts.join(' | ') : '-', subtle: true },
 			{ label: '\u041F\u0440\u0438\u0447\u0438\u043D\u0430 \u0440\u0435\u0441\u0442\u0430\u0440\u0442\u0430', value: restartInsight.summary || '-', subtle: true },
 			{ label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u0439 \u043e\u043f\u0440\u043e\u0441', value: String(botStatus.last_poll_at || '-'), subtle: true },
 			{ label: '\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u043e\u0448\u0438\u0431\u043a\u0430', value: String(botStatus.last_error || '-'), subtle: true },
