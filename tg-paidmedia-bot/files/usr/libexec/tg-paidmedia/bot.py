@@ -349,6 +349,7 @@ class TelegramPaidMediaBot:
                 },
                 "last_balance": {},
                 "last_purchase": {},
+                "recent_purchases": [],
             },
         )
         self.state.setdefault("offset", 0)
@@ -363,6 +364,7 @@ class TelegramPaidMediaBot:
         self.state["stats"].setdefault("sbp_orders_paid", 0)
         self.state.setdefault("last_balance", {})
         self.state.setdefault("last_purchase", {})
+        self.state.setdefault("recent_purchases", [])
         self.state.setdefault("last_platega_order", {})
         self.state.setdefault("last_platega_event", {})
         self.orders = load_json(self.orders_path, {"next_id": 1, "items": []})
@@ -907,6 +909,17 @@ class TelegramPaidMediaBot:
             )
             self.send_direct_item(order["chat_id"], item)
             self.state["stats"]["sbp_orders_paid"] += 1
+            self.append_recent_purchase(
+                "СБП / Platega",
+                user_id=order.get("user_id"),
+                user_name=order.get("user_name", ""),
+                item=item,
+                amount_text="{0} RUB".format(
+                    self.format_rub_amount(order.get("amount_rub", 0))
+                ),
+                order_id=order.get("id"),
+                received_at=utc_now(),
+            )
             self.save_state()
             self.touch_order(order, delivery_state="delivered")
             self.notify_admin_purchase(
@@ -1042,6 +1055,31 @@ class TelegramPaidMediaBot:
                     "Failed to notify admin %s about purchase: %s", admin_id, exc
                 )
 
+    def append_recent_purchase(
+        self,
+        payment_method,
+        user_id=None,
+        user_name="",
+        item=None,
+        amount_text="",
+        order_id=None,
+        received_at="",
+    ):
+        entries = self.state.setdefault("recent_purchases", [])
+        entries.append(
+            {
+                "payment_method": payment_method,
+                "user_id": user_id,
+                "user_name": user_name,
+                "item_id": item.get("id") if item else None,
+                "item_title": item.get("title") if item else "",
+                "amount_text": amount_text,
+                "order_id": order_id,
+                "received_at": received_at or utc_now(),
+            }
+        )
+        self.state["recent_purchases"] = entries[-20:]
+
     def send_message(
         self,
         chat_id,
@@ -1071,6 +1109,7 @@ class TelegramPaidMediaBot:
             "my_posts": "🗂 Мои посты",
             "balance": "💰 Баланс Stars",
             "transactions": "📈 Операции Stars",
+            "sales": "🧾 Последние покупки",
             "admin_help": "🛠 Помощь админа",
             "back": "⬅️ Назад",
             "cancel": "❌ Отмена",
@@ -1086,6 +1125,7 @@ class TelegramPaidMediaBot:
             "my_posts": {"Мои посты"},
             "balance": {"Баланс Stars"},
             "transactions": {"Операции Stars"},
+            "sales": {"Последние покупки"},
             "admin_help": {"Помощь админа"},
             "back": {"Назад"},
             "cancel": {"Отмена"},
@@ -1103,7 +1143,8 @@ class TelegramPaidMediaBot:
                 [
                     [{"text": labels["create_photo_post"]}, {"text": labels["create_video_post"]}],
                     [{"text": labels["my_posts"]}, {"text": labels["balance"]}],
-                    [{"text": labels["transactions"]}, {"text": labels["admin_help"]}],
+                    [{"text": labels["transactions"]}, {"text": labels["sales"]}],
+                    [{"text": labels["admin_help"]}],
                     [{"text": labels["back"]}, {"text": labels["cancel"]}],
                 ]
             )
@@ -1145,6 +1186,7 @@ class TelegramPaidMediaBot:
             {"command": "postvideo", "description": "Создать платный пост из видео"},
             {"command": "balance", "description": "Показать баланс Telegram Stars"},
             {"command": "transactions", "description": "Последние операции по Stars"},
+            {"command": "sales", "description": "Последние покупки магазина"},
         ]
         self.api_call("setMyCommands", {"commands": commands})
 
@@ -1636,6 +1678,10 @@ class TelegramPaidMediaBot:
 
         if self.is_menu_button(text, "transactions"):
             self.handle_admin_command(message, "/transactions", "")
+            return True
+
+        if self.is_menu_button(text, "sales"):
+            self.handle_admin_command(message, "/sales", "")
             return True
 
         if self.is_menu_button(text, "admin_help"):
@@ -2174,6 +2220,19 @@ class TelegramPaidMediaBot:
                 thank_you += "\nUnlocked item: #{0} {1}".format(item["id"], item["title"])
             self.send_message(user["id"], thank_you)
 
+        self.append_recent_purchase(
+            "Telegram Stars",
+            user_id=purchase_info.get("user_id"),
+            user_name=purchase_info.get("user_name", ""),
+            item=item,
+            amount_text=(
+                "{0} Stars".format(item.get("price"))
+                if item and item.get("price") is not None
+                else ""
+            ),
+            received_at=purchase_info.get("received_at", ""),
+        )
+        self.save_state()
         self.notify_admin_purchase(
             "Telegram Stars",
             user_id=purchase_info.get("user_id"),
@@ -2372,6 +2431,7 @@ class TelegramPaidMediaBot:
                 "/settitle <id> <title> - change title",
                 "/setcaption <id> <text> - change caption",
                 "/delete <id> - delete item",
+                "/sales - recent purchases list",
                 "/orders - recent SBP orders",
                 "/balance - Telegram Stars balance",
                 "/transactions [count] - recent Stars operations",
@@ -2490,6 +2550,25 @@ class TelegramPaidMediaBot:
             )
         self.send_message(chat_id, "\n".join(lines))
 
+    def send_sales_summary(self, chat_id):
+        items = list(reversed(self.state.get("recent_purchases", [])))[:10]
+        if not items:
+            self.send_message(chat_id, "No purchases yet.")
+            return
+
+        lines = ["Recent purchases:"]
+        for entry in items:
+            lines.append(
+                "{0} | {1} | #{2} | {3} | {4}".format(
+                    entry.get("received_at", "-"),
+                    entry.get("payment_method", "-"),
+                    entry.get("item_id") or "-",
+                    entry.get("amount_text") or "-",
+                    entry.get("user_name") or entry.get("user_id") or "-",
+                )
+            )
+        self.send_message(chat_id, "\n".join(lines))
+
     def handle_admin_command(self, message, command, args):
         chat_id = message["chat"]["id"]
         user_id = message.get("from", {}).get("id")
@@ -2537,6 +2616,13 @@ class TelegramPaidMediaBot:
                 self.send_message(chat_id, "Administrator access is required.")
                 return
             self.send_orders_summary(chat_id)
+            return
+
+        if command == "/sales":
+            if not self.is_admin(user_id):
+                self.send_message(chat_id, "Administrator access is required.")
+                return
+            self.send_sales_summary(chat_id)
             return
 
         return self._legacy_handle_admin_command(message, command, args)
@@ -2654,6 +2740,7 @@ class TelegramPaidMediaBot:
             "/balance",
             "/transactions",
             "/withdraw",
+            "/sales",
             "/setrubprice",
             "/orders",
         }:
