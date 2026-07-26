@@ -2880,7 +2880,7 @@ class TelegramPaidMediaBot:
         if rub_price > 0 and self.has_yoomoney_credentials():
             row.append(
                 {
-                    "text": "Buy via YooMoney {0} RUB".format(
+                    "text": "ЮMoney {0} RUB".format(
                         self.format_rub_amount(rub_price)
                     ),
                     "callback_data": "buyyoomoney:{0}".format(item["id"]),

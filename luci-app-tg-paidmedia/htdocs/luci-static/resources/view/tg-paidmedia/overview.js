@@ -259,6 +259,41 @@ function firstMeaningfulLine(text) {
 	return lines.length ? lines[0] : '';
 }
 
+function buildYooMoneyGuideMarkup() {
+	return [
+		'<details class="tg-paidmedia-inline-guide" open>',
+		'<summary>Открыть инструкцию по ЮMoney</summary>',
+		'<div class="tg-paidmedia-inline-guide-body">',
+		'<p><strong>1. Что взять в ЮMoney</strong></p>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li>Номер кошелька: вида <code>4100...</code>.</li>',
+		'<li>Секрет: на странице <code>HTTP-уведомления</code> нажмите <code>Показать секрет</code>.</li>',
+		'<li>URL уведомлений: <code>https://ваш-домен/yoomoney/webhook</code>.</li>',
+		'</ul>',
+		'<p><strong>2. Что заполнить в LuCI</strong></p>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li><code>Включить ЮMoney</code> = включено.</li>',
+		'<li><code>Номер кошелька ЮMoney</code> = ваш номер кошелька.</li>',
+		'<li><code>Секрет уведомлений ЮMoney</code> = секрет из HTTP-уведомлений.</li>',
+		'<li><code>Публичный URL webhook ЮMoney</code> = <code>https://ваш-домен/yoomoney/webhook</code>.</li>',
+		'<li><code>Хост</code> = <code>0.0.0.0</code>, <code>Порт</code> = <code>8100</code>, <code>Путь webhook</code> = <code>/yoomoney/webhook</code>, <code>Путь платежной страницы</code> = <code>/yoomoney/pay</code>.</li>',
+		'</ul>',
+		'<p><strong>3. Пример с VPS и SSH tunnel</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">ssh -N -R 127.0.0.1:18101:127.0.0.1:8100 root@IP_ВАШЕГО_VPS</pre>',
+		'<p>Пример nginx на VPS:</p>',
+		'<pre class="tg-paidmedia-inline-code">location /yoomoney/ {\n    proxy_pass http://127.0.0.1:18101;\n    proxy_set_header Host $host;\n    proxy_set_header X-Forwarded-Proto https;\n}</pre>',
+		'<p><strong>4. Как проверить</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">/etc/init.d/tg-paidmedia restart\nlogread -f | grep tg-paidmedia</pre>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li>В ЮMoney нажмите <code>Протестировать</code>.</li>',
+		'<li>В логе должна появиться строка <code>POST /yoomoney/webhook ... 200</code>.</li>',
+		'<li>Потом в боте используйте <code>/buyyoomoney &lt;id&gt;</code>.</li>',
+		'</ul>',
+		'</div>',
+		'</details>'
+	].join('');
+}
+
 function buildRestartInsight(logText, botStatus) {
 	var startLines = collectStartLines(logText);
 	var lastStartLine = startLines.length ? startLines[startLines.length - 1] : '';
@@ -1281,6 +1316,41 @@ return view.extend({
 				color: var(--tg-text-soft);
 			}
 
+			.tg-paidmedia-inline-guide {
+				margin: .2rem 0 .8rem;
+				border: 1px solid var(--tg-border);
+				border-radius: 8px;
+				background: var(--tg-surface);
+				overflow: hidden;
+			}
+
+			.tg-paidmedia-inline-guide summary {
+				cursor: pointer;
+				list-style: none;
+				padding: .82rem .9rem;
+				font-weight: 700;
+			}
+
+			.tg-paidmedia-inline-guide summary::-webkit-details-marker {
+				display: none;
+			}
+
+			.tg-paidmedia-inline-guide-body {
+				padding: 0 .9rem .9rem;
+			}
+
+			.tg-paidmedia-inline-code {
+				margin: .45rem 0 .8rem;
+				padding: .75rem .8rem;
+				border-radius: 8px;
+				background: var(--tg-console-bg);
+				color: var(--tg-console-text);
+				white-space: pre-wrap;
+				word-break: break-word;
+				font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				font-size: .87rem;
+			}
+
 			.tg-paidmedia-page .cbi-value-title,
 			.tg-paidmedia-page label,
 			.tg-paidmedia-page .cbi-value-field,
@@ -1850,6 +1920,12 @@ return view.extend({
 
 		s = m.section(form.NamedSection, 'main', 'bot', 'ЮMoney');
 
+		o = s.option(form.DummyValue, '_yoomoney_guide', 'Быстрая настройка ЮMoney');
+		o.rawhtml = true;
+		o.cfgvalue = function() {
+			return buildYooMoneyGuideMarkup();
+		};
+
 		o = s.option(form.Flag, 'yoomoney_enabled', 'Включить ЮMoney');
 		o.rmempty = false;
 
@@ -2020,8 +2096,8 @@ return view.extend({
 			{ label: 'Stars purchases', value: String(stats.stars_purchases || 0) },
 			{ label: 'SBP orders', value: String(stats.sbp_orders_created || 0) },
 			{ label: 'SBP delivered', value: String(stats.sbp_orders_paid || 0) },
-			{ label: 'YooMoney orders', value: String(stats.yoomoney_orders_created || 0) },
-			{ label: 'YooMoney delivered', value: String(stats.yoomoney_orders_paid || 0) },
+			{ label: 'ЮMoney orders', value: String(stats.yoomoney_orders_created || 0) },
+			{ label: 'ЮMoney delivered', value: String(stats.yoomoney_orders_paid || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u0441\u0442\u0430\u0440\u0442', value: restartInsight.lastStartAt || '-', subtle: true },
 			{ label: '\u0420\u0435\u0441\u0442\u0430\u0440\u0442\u043E\u0432 \u0437\u0430 \u0447\u0430\u0441', value: String(startStats.countLastHour || 0) },
 			{ label: '\u041F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0441\u0442\u0430\u0440\u0442\u044B', value: startStats.recentStarts.length ? startStats.recentStarts.join(' | ') : '-', subtle: true },
@@ -2039,7 +2115,7 @@ return view.extend({
 				subtle: true
 			},
 			{
-				label: 'Last YooMoney event',
+				label: 'Last ЮMoney event',
 				value: lastYoomoneyEvent.status ? String(lastYoomoneyEvent.status + ' / ' + (lastYoomoneyEvent.operation_id || '-')) : '-',
 				subtle: true
 			}
