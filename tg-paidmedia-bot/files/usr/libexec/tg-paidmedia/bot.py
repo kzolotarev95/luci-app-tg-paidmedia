@@ -210,6 +210,13 @@ def compact_name(user):
     return str(user.get("id", "unknown"))
 
 
+def truncate_text(text, limit=48):
+    source = str(text or "").strip()
+    if len(source) <= limit:
+        return source
+    return source[: max(0, limit - 1)].rstrip() + "…"
+
+
 def parse_callback_body(body_bytes):
     text = (body_bytes or b"").decode("utf-8", errors="replace").strip()
     if not text:
@@ -2805,23 +2812,24 @@ class TelegramPaidMediaBot:
         lines = [self.bot_title, "", self.welcome_text, ""]
 
         if not self.catalog["items"]:
-            lines.append("No published paid posts yet.")
+            lines.append("Пока нет опубликованных товаров.")
         else:
-            lines.append("Available paid posts:")
+            lines.append("Доступные товары:")
+            lines.append("")
             for item in self.catalog["items"]:
-                media_type = "Photo" if item["kind"] == "photo" else "Video"
-                price_parts = ["{0} Stars".format(item["price"])]
+                media_type = "Фото" if item["kind"] == "photo" else "Видео"
+                price_parts = ["⭐ {0}".format(item["price"])]
                 rub_price = self.item_rub_price(item)
                 if rub_price > 0:
                     rub_methods = []
                     if self.has_platega_credentials():
-                        rub_methods.append("SBP")
+                        rub_methods.append("СБП")
                     if self.has_yoomoney_credentials():
-                        rub_methods.append("YooMoney")
+                        rub_methods.append("ЮMoney")
 
                     if rub_methods:
                         price_parts.append(
-                            "{0} RUB via {1}".format(
+                            "{0} RUB через {1}".format(
                                 self.format_rub_amount(rub_price),
                                 " / ".join(rub_methods),
                             )
@@ -2830,26 +2838,18 @@ class TelegramPaidMediaBot:
                         price_parts.append(
                             "{0} RUB".format(self.format_rub_amount(rub_price))
                         )
-                lines.append(
-                    "#{0} | {1} | {2} | {3}".format(
-                        item["id"], media_type, " / ".join(price_parts), item["title"]
-                    )
-                )
+                lines.append("#{0} • {1}".format(item["id"], media_type))
+                lines.append(truncate_text(item.get("title", ""), 72))
+                lines.append(" / ".join(price_parts))
+                lines.append("")
 
         if self.catalog["items"]:
-            lines.extend(
-                [
-                    "",
-                    "Используйте кнопки ниже или команду /buy <id> для оплаты в Stars.",
-                ]
-            )
-            if self.has_platega_credentials():
-                lines.append("Для СБП используйте /buyrub <id>.")
-            if self.has_yoomoney_credentials():
-                lines.append("Для ЮMoney используйте /buyyoomoney <id>.")
+            if lines[-1] == "":
+                lines.pop()
+            lines.extend(["", "Нажмите кнопку под нужным товаром."])
 
         if include_admin_hint and self.admin_ids:
-            lines.extend(["", "Admin commands: /admin"])
+            lines.extend(["", "Команды админа: /admin"])
 
         return "\n".join(lines)
 
@@ -2863,7 +2863,7 @@ class TelegramPaidMediaBot:
     def build_item_purchase_buttons(self, item):
         row = [
             {
-                "text": "Open for ⭐ {0}".format(item["price"]),
+                "text": "#{0} • ⭐ {1}".format(item["id"], item["price"]),
                 "callback_data": "buy:{0}".format(item["id"]),
             }
         ]
@@ -2871,8 +2871,8 @@ class TelegramPaidMediaBot:
         if rub_price > 0 and self.has_platega_credentials():
             row.append(
                 {
-                    "text": "Buy for {0} RUB SBP".format(
-                        self.format_rub_amount(rub_price)
+                    "text": "#{0} • СБП {1} RUB".format(
+                        item["id"], self.format_rub_amount(rub_price)
                     ),
                     "callback_data": "buyrub:{0}".format(item["id"]),
                 }
@@ -2880,8 +2880,8 @@ class TelegramPaidMediaBot:
         if rub_price > 0 and self.has_yoomoney_credentials():
             row.append(
                 {
-                    "text": "ЮMoney {0} RUB".format(
-                        self.format_rub_amount(rub_price)
+                    "text": "#{0} • ЮMoney {1} RUB".format(
+                        item["id"], self.format_rub_amount(rub_price)
                     ),
                     "callback_data": "buyyoomoney:{0}".format(item["id"]),
                 }
@@ -2894,7 +2894,7 @@ class TelegramPaidMediaBot:
     def send_item_purchase_options(self, chat_id, item):
         self.send_message(
             chat_id,
-            "Choose a payment method for post #{0}:".format(item["id"]),
+            "Выберите способ оплаты для товара #{0}:".format(item["id"]),
             reply_markup=self.build_item_purchase_keyboard(item),
         )
 
