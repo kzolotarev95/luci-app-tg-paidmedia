@@ -2372,6 +2372,8 @@ return view.extend({
 		var health = botStatus.yoomoney_health || {};
 		var secretCheck = health.last_secret_check || {};
 		var tunnelMeta = this.extractServiceInstance(serviceStatus, 'yoomoney-tunnel');
+		var tunnelRuntimeState = String(health.tunnel_runtime_state || '').trim();
+		var tunnelRuntimeMessage = String(health.tunnel_runtime_message || '').trim();
 		var secretBadge;
 		var tunnelBadge;
 		var tunnelTargetText;
@@ -2390,6 +2392,14 @@ return view.extend({
 			tunnelBadge = this.buildStateBadge(false, '', '\u0412\u044B\u043A\u043B\u044E\u0447\u0435\u043D');
 		else if (!health.tunnel_configured)
 			tunnelBadge = this.buildStateBadge(false, '', '\u041D\u0435 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D');
+		else if (tunnelRuntimeState === 'active')
+			tunnelBadge = this.buildStateBadge(true, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', '');
+		else if (tunnelRuntimeState === 'connecting')
+			tunnelBadge = this.buildStateBadge(true, '\u041F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442\u0441\u044F', '');
+		else if (tunnelRuntimeState === 'retrying')
+			tunnelBadge = this.buildStateBadge(false, '', '\u041F\u0435\u0440\u0435\u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0435\u0442\u0441\u044F');
+		else if (tunnelRuntimeState === 'stopped')
+			tunnelBadge = this.buildStateBadge(false, '', '\u041E\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D');
 		else if (tunnelMeta.running)
 			tunnelBadge = this.buildStateBadge(true, '\u0410\u043A\u0442\u0438\u0432\u0435\u043D', '');
 		else
@@ -2402,6 +2412,8 @@ return view.extend({
 			tunnelTargetText = '-';
 
 		warningsText = health.warnings && health.warnings.length ? health.warnings.join(' | ') : '\u041D\u0435\u0442';
+		if (tunnelRuntimeMessage && tunnelRuntimeState && tunnelRuntimeState !== 'active' && warningsText === '\u041D\u0435\u0442')
+			warningsText = tunnelRuntimeMessage;
 		var cards = [
 			{
 				label: '\u0421\u0435\u043A\u0440\u0435\u0442 \u042eMoney',

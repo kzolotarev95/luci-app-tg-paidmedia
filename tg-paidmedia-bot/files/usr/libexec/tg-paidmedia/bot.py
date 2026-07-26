@@ -125,6 +125,30 @@ def load_json(path, default):
         return default
 
 
+def load_key_value_file(path):
+    data = {}
+
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+                    value = value[1:-1]
+                data[key] = value
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        LOG.warning("Failed to read key/value file %s: %s", path, exc)
+        return {}
+
+    return data
+
+
 def atomic_write_json(path, payload):
     pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -438,6 +462,10 @@ class TelegramPaidMediaBot:
         self.yoomoney_tunnel_accept_hostkey = env_bool(
             "TG_YOOMONEY_TUNNEL_ACCEPT_HOSTKEY", True
         )
+        self.yoomoney_tunnel_status_path = os.environ.get(
+            "TG_YOOMONEY_TUNNEL_STATUS_PATH",
+            "/var/run/tg-paidmedia/yoomoney-tunnel.status",
+        ).strip()
         self._yoomoney_server = None
         self._yoomoney_server_thread = None
         self._orders_lock = threading.Lock()
@@ -893,12 +921,26 @@ class TelegramPaidMediaBot:
             self.yoomoney_tunnel_local_port,
         )
 
+    def load_yoomoney_tunnel_runtime(self):
+        runtime = load_key_value_file(self.yoomoney_tunnel_status_path)
+
+        return {
+            "state": str(runtime.get("state") or "").strip().lower(),
+            "checked_at": str(runtime.get("checked_at") or "").strip(),
+            "pid": str(runtime.get("pid") or "").strip(),
+            "attempt": str(runtime.get("attempt") or "").strip(),
+            "target": str(runtime.get("target") or "").strip(),
+            "message": str(runtime.get("message") or "").strip(),
+        }
+
     def build_yoomoney_health(self):
         callback = urllib.parse.urlparse(self.yoomoney_callback_url or "")
         secret_check = self.state.get("last_yoomoney_secret_check", {})
         tunnel_target = self.build_yoomoney_tunnel_target()
         missing = self.yoomoney_missing_fields()
         tunnel_missing = self.yoomoney_tunnel_missing_fields()
+        tunnel_runtime = self.load_yoomoney_tunnel_runtime()
+        tunnel_runtime_state = tunnel_runtime.get("state")
         warnings = []
 
         if self.yoomoney_enabled and missing:
@@ -909,6 +951,25 @@ class TelegramPaidMediaBot:
             warnings.append("YooMoney: callback URL should be public HTTPS")
         if self.yoomoney_tunnel_enabled and tunnel_missing:
             warnings.append("Tunnel: missing " + ", ".join(tunnel_missing))
+        if (
+            self.yoomoney_tunnel_enabled
+            and not tunnel_missing
+            and tunnel_runtime_state in {"retrying", "stopped"}
+        ):
+            warnings.append(
+                "Tunnel: {0}".format(
+                    tunnel_runtime.get("message")
+                    or "reverse tunnel is reconnecting"
+                )
+            )
+        if (
+            self.yoomoney_tunnel_enabled
+            and not tunnel_missing
+            and not tunnel_runtime_state
+        ):
+            warnings.append(
+                "Tunnel: runtime status file is empty, wait a few seconds after reboot"
+            )
 
         return {
             "enabled": bool(self.yoomoney_enabled),
@@ -935,6 +996,12 @@ class TelegramPaidMediaBot:
             "tunnel_target": tunnel_target,
             "tunnel_private_key": self.yoomoney_tunnel_private_key,
             "tunnel_accept_hostkey": bool(self.yoomoney_tunnel_accept_hostkey),
+            "tunnel_runtime_state": tunnel_runtime_state,
+            "tunnel_runtime_checked_at": tunnel_runtime.get("checked_at"),
+            "tunnel_runtime_pid": tunnel_runtime.get("pid"),
+            "tunnel_runtime_attempt": tunnel_runtime.get("attempt"),
+            "tunnel_runtime_target": tunnel_runtime.get("target"),
+            "tunnel_runtime_message": tunnel_runtime.get("message"),
             "warnings": warnings,
         }
 
