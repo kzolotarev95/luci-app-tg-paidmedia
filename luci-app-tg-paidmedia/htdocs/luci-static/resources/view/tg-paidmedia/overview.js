@@ -507,10 +507,11 @@ return view.extend({
 				--tg-focus-border: #7aa7dd;
 				--tg-focus-ring: 0 0 0 2px rgba(11, 111, 219, 0.08);
 				--tg-tab-bg: #eef2f6;
-				padding: 16px 0 28px;
+				padding: 12px 0 22px;
 				color: var(--tg-text);
 				background: transparent;
 				font-family: inherit;
+				font-size: .9rem;
 			}
 
 			.tg-paidmedia-page.is-dark-theme {
@@ -569,7 +570,7 @@ return view.extend({
 			.tg-paidmedia-shell {
 				max-width: 1180px;
 				margin: 0 auto;
-				padding: 0 16px;
+				padding: 0 14px;
 			}
 
 			.tg-paidmedia-orb {
@@ -662,7 +663,7 @@ return view.extend({
 
 			.tg-paidmedia-section {
 				margin-bottom: 1rem;
-				padding: 1rem 1.1rem;
+				padding: .92rem 1rem;
 				border: 1px solid var(--tg-border);
 				border-radius: 10px;
 				background: var(--tg-surface);
@@ -695,12 +696,12 @@ return view.extend({
 
 			.tg-paidmedia-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-				gap: .75rem;
+				grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+				gap: .62rem;
 			}
 
 			.tg-paidmedia-card {
-				padding: .85rem .9rem;
+				padding: .72rem .8rem;
 				border: 1px solid var(--tg-border);
 				border-radius: 8px;
 				background: var(--tg-surface-soft);
@@ -709,7 +710,7 @@ return view.extend({
 			.tg-paidmedia-card-label {
 				margin: 0 0 .45rem;
 				color: var(--tg-text-muted);
-				font-size: .76rem;
+				font-size: .72rem;
 				font-weight: 600;
 				letter-spacing: .02em;
 				text-transform: uppercase;
@@ -718,14 +719,14 @@ return view.extend({
 			.tg-paidmedia-card-value {
 				margin: 0;
 				color: var(--tg-text);
-				font-size: 1rem;
+				font-size: .94rem;
 				font-weight: 600;
 				line-height: 1.35;
 				word-break: break-word;
 			}
 
 			.tg-paidmedia-card-subtle {
-				font-size: .92rem;
+				font-size: .86rem;
 				font-weight: 500;
 			}
 
@@ -769,7 +770,7 @@ return view.extend({
 
 			.tg-paidmedia-actions .btn {
 				min-width: 10rem;
-				padding: .55rem .9rem;
+				padding: .5rem .8rem;
 				border-radius: 6px;
 				font-weight: 600;
 			}
@@ -818,7 +819,7 @@ return view.extend({
 
 			.tg-paidmedia-toolbar-btn {
 				min-width: 9rem;
-				padding: .5rem .85rem;
+				padding: .46rem .78rem;
 				border-radius: 6px;
 				font-weight: 600;
 			}
@@ -1149,8 +1150,8 @@ return view.extend({
 				flex-wrap: wrap;
 				align-items: flex-start;
 				justify-content: space-between;
-				gap: 1rem;
-				margin: 0 0 1.35rem;
+				gap: .9rem;
+				margin: 0 0 1.1rem;
 			}
 
 			.tg-paidmedia-headline {
@@ -1160,7 +1161,7 @@ return view.extend({
 			.tg-paidmedia-page-title {
 				margin: 0;
 				color: var(--tg-text);
-				font-size: clamp(2rem, 4vw, 2.7rem);
+				font-size: clamp(1.72rem, 3.5vw, 2.35rem);
 				font-weight: 800;
 				line-height: 1.02;
 				letter-spacing: -.03em;
@@ -1169,7 +1170,7 @@ return view.extend({
 			.tg-paidmedia-page-subtitle {
 				margin: .35rem 0 0;
 				color: var(--tg-text-soft);
-				font-size: .98rem;
+				font-size: .88rem;
 				font-weight: 500;
 				line-height: 1.5;
 			}
@@ -1185,12 +1186,12 @@ return view.extend({
 				display: inline-flex;
 				align-items: center;
 				gap: .5rem;
-				padding: .62rem 1rem;
+				padding: .54rem .88rem;
 				border-radius: 999px;
 				border: 1px solid var(--tg-border);
 				background: var(--tg-surface-soft);
 				color: var(--tg-text);
-				font-size: .96rem;
+				font-size: .86rem;
 				font-weight: 700;
 				line-height: 1;
 				white-space: nowrap;
@@ -1220,57 +1221,57 @@ return view.extend({
 			.tg-paidmedia-section,
 			.tg-paidmedia-page .cbi-section,
 			.tg-paidmedia-page .cbi-section-node {
-				border-radius: 18px;
+				border-radius: 16px;
 			}
 
 			.tg-paidmedia-section {
-				padding: 1.15rem 1.2rem 1.25rem;
+				padding: 1rem 1.05rem 1.08rem;
 			}
 
 			.tg-paidmedia-section-title-strong {
-				font-size: 1rem;
+				font-size: .95rem;
 				font-weight: 800;
 				letter-spacing: -.01em;
 			}
 
 			.tg-paidmedia-section-headlined {
-				margin-bottom: 1.15rem;
-				padding-bottom: 1rem;
+				margin-bottom: .95rem;
+				padding-bottom: .82rem;
 				border-bottom: 1px solid var(--tg-border);
 			}
 
 			.tg-paidmedia-status-note {
-				margin: .45rem 0 0;
+				margin: .35rem 0 0;
 				max-width: 48rem;
 			}
 
 			.tg-paidmedia-card {
-				min-height: 5.9rem;
-				padding: 1rem 1rem 1.05rem;
-				border-radius: 14px;
+				min-height: 5.15rem;
+				padding: .82rem .86rem .88rem;
+				border-radius: 12px;
 			}
 
 			.tg-paidmedia-card-label {
-				font-size: .8rem;
+				font-size: .74rem;
 				letter-spacing: .03em;
 			}
 
 			.tg-paidmedia-card-value {
-				font-size: 1.02rem;
+				font-size: .93rem;
 				font-weight: 700;
 			}
 
 			.tg-paidmedia-actions {
-				gap: .7rem;
-				margin-top: 1.1rem;
+				gap: .6rem;
+				margin-top: .95rem;
 			}
 
 			.tg-paidmedia-action-btn,
 			.tg-paidmedia-btn-open {
-				min-width: 10.5rem;
-				padding: .78rem 1.15rem;
-				border-radius: 14px;
-				font-size: .96rem;
+				min-width: 9.5rem;
+				padding: .66rem .95rem;
+				border-radius: 12px;
+				font-size: .87rem;
 				font-weight: 700;
 				transition: transform .14s ease, border-color .14s ease, background .14s ease;
 			}
@@ -1307,8 +1308,8 @@ return view.extend({
 			.tg-paidmedia-callout-panel .tg-paidmedia-section-head,
 			.tg-paidmedia-log-panel .tg-paidmedia-section-head,
 			.tg-paidmedia-payments-panel .tg-paidmedia-section-head {
-				margin-bottom: 1rem;
-				padding-bottom: .95rem;
+				margin-bottom: .86rem;
+				padding-bottom: .78rem;
 				border-bottom: 1px solid var(--tg-border);
 			}
 
@@ -1319,8 +1320,8 @@ return view.extend({
 			}
 
 			.tg-paidmedia-toolbar-btn {
-				border-radius: 14px;
-				padding: .72rem 1rem;
+				border-radius: 12px;
+				padding: .62rem .88rem;
 				font-weight: 700;
 			}
 
@@ -1328,14 +1329,14 @@ return view.extend({
 			.tg-paidmedia-page .cbi-map h4,
 			.tg-paidmedia-page .cbi-section h3,
 			.tg-paidmedia-page .cbi-section legend {
-				font-size: 1.02rem;
+				font-size: .94rem;
 				font-weight: 800;
 				letter-spacing: -.01em;
 			}
 
 			.tg-paidmedia-page .cbi-section,
 			.tg-paidmedia-page .cbi-section-node {
-				padding: 1.1rem 1.1rem 1.15rem;
+				padding: .95rem .95rem 1rem;
 			}
 
 			@media (max-width: 700px) {
