@@ -370,6 +370,61 @@ function buildYooMoneyGuideMarkup() {
 	].join('');
 }
 
+function buildYooMoneyTunnelGuideMarkup() {
+	return [
+		'<details class="tg-paidmedia-inline-guide">',
+		'<summary>Пошагово: reverse tunnel для ЮMoney через VPS</summary>',
+		'<div class="tg-paidmedia-inline-guide-body">',
+		'<p><strong>Когда это нужно</strong></p>',
+		'<p>Если у роутера нет белого IP, ЮMoney отправляет webhook на VPS, а VPS прокидывает его по SSH reverse tunnel обратно на роутер.</p>',
+		'<p><strong>1. Что сделать на роутере</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">mkdir -p /root/.ssh\nchmod 700 /root/.ssh\n[ -f /root/.ssh/id_ed25519 ] || ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N \"\"\ncat /root/.ssh/id_ed25519.pub</pre>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li>Команда <code>cat /root/.ssh/id_ed25519.pub</code> покажет публичный ключ роутера.</li>',
+		'<li>Нужна вся строка, которая начинается с <code>ssh-ed25519</code>.</li>',
+		'</ul>',
+		'<p><strong>2. Что сделать на VPS</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">mkdir -p /root/.ssh\nchmod 700 /root/.ssh\ntouch /root/.ssh/authorized_keys\nchmod 600 /root/.ssh/authorized_keys\nprintf \'%s\\n\' \'ssh-ed25519 AAAA... КЛЮЧ_С_РОУТЕРА\' >> /root/.ssh/authorized_keys</pre>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li>В <code>authorized_keys</code> нужно добавлять именно строку ключа с роутера, а не путь <code>/root/.ssh/id_ed25519.pub</code>.</li>',
+		'<li>Если раньше по ошибке добавили путь к файлу, удалите его: <code>sed -i \'\\|/root/.ssh/id_ed25519.pub|d\' /root/.ssh/authorized_keys</code>.</li>',
+		'</ul>',
+		'<p><strong>3. Проверка SSH с роутера на VPS</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">ssh -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new root@45.9.73.74 \'echo ok\'</pre>',
+		'<p>Если всё настроено правильно, команда вернёт <code>ok</code>.</p>',
+		'<p><strong>4. Что заполнить в LuCI</strong></p>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li><code>Авто reverse tunnel ЮMoney</code> = включить.</li>',
+		'<li><code>Хост VPS для tunnel</code> = <code>45.9.73.74</code>.</li>',
+		'<li><code>SSH порт VPS</code> = <code>22</code>.</li>',
+		'<li><code>SSH логин VPS</code> = <code>root</code>.</li>',
+		'<li><code>Удалённый порт tunnel</code> = <code>18101</code>.</li>',
+		'<li><code>Локальный хост tunnel</code> = <code>127.0.0.1</code>.</li>',
+		'<li><code>Локальный порт tunnel</code> = <code>8100</code>.</li>',
+		'<li><code>Ключ SSH для tunnel</code> = <code>/root/.ssh/id_ed25519</code>.</li>',
+		'<li><code>Авто-приём host key</code> = включить.</li>',
+		'</ul>',
+		'<p><strong>5. Если мини-проверка пишет Tunnel: missing host</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">uci set tg-paidmedia.main.yoomoney_tunnel_enabled=\'1\'\nuci set tg-paidmedia.main.yoomoney_tunnel_host=\'45.9.73.74\'\nuci set tg-paidmedia.main.yoomoney_tunnel_port=\'22\'\nuci set tg-paidmedia.main.yoomoney_tunnel_user=\'root\'\nuci set tg-paidmedia.main.yoomoney_tunnel_remote_port=\'18101\'\nuci set tg-paidmedia.main.yoomoney_tunnel_local_host=\'127.0.0.1\'\nuci set tg-paidmedia.main.yoomoney_tunnel_local_port=\'8100\'\nuci set tg-paidmedia.main.yoomoney_tunnel_private_key=\'/root/.ssh/id_ed25519\'\nuci set tg-paidmedia.main.yoomoney_tunnel_accept_hostkey=\'1\'\nuci commit tg-paidmedia\n/etc/init.d/tg-paidmedia restart</pre>',
+		'<p>Так вы принудительно сохраняете поля tunnel в UCI, если LuCI визуально показывает host, но сервис его не видит.</p>',
+		'<p><strong>6. Как проверить, что tunnel поднялся</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">ss -lntp | grep 18101</pre>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li>На VPS должна появиться строка вида <code>127.0.0.1:18101 ... sshd</code>.</li>',
+		'<li>Это значит, что reverse tunnel уже слушает на VPS и может принимать запросы от nginx.</li>',
+		'</ul>',
+		'<p><strong>7. Проверка webhook</strong></p>',
+		'<pre class="tg-paidmedia-inline-code">/etc/init.d/tg-paidmedia restart\nlogread -f | grep tg-paidmedia</pre>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li>В кабинете ЮMoney нажмите тест HTTP-уведомления.</li>',
+		'<li>В логе должна появиться строка <code>POST /yoomoney/webhook ... 200</code>.</li>',
+		'<li>Если видите <code>signature validation failed</code>, значит секрет в LuCI не совпадает с секретом в кабинете ЮMoney.</li>',
+		'</ul>',
+		'</div>',
+		'</details>'
+	].join('');
+}
+
 function buildRestartInsight(logText, botStatus) {
 	var startLines = collectStartLines(logText);
 	var lastStartLine = startLines.length ? startLines[startLines.length - 1] : '';
@@ -2038,7 +2093,7 @@ return view.extend({
 		o = s.option(form.DummyValue, '_yoomoney_guide', 'Быстрая настройка ЮMoney');
 		o.rawhtml = true;
 		o.cfgvalue = function() {
-			return buildYooMoneyGuideMarkup();
+			return buildYooMoneyGuideMarkup() + buildYooMoneyTunnelGuideMarkup();
 		};
 
 		o = s.option(form.Flag, 'yoomoney_enabled', 'Включить ЮMoney');
