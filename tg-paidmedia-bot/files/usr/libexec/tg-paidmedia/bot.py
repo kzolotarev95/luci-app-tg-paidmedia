@@ -2840,13 +2840,13 @@ class TelegramPaidMediaBot:
             lines.extend(
                 [
                     "",
-                    "Use the buttons below, or /buy <id> for Stars.",
+                    "Используйте кнопки ниже или команду /buy <id> для оплаты в Stars.",
                 ]
             )
             if self.has_platega_credentials():
-                lines.append("For SBP use /buyrub <id>.")
+                lines.append("Для СБП используйте /buyrub <id>.")
             if self.has_yoomoney_credentials():
-                lines.append("For YooMoney use /buyyoomoney <id>.")
+                lines.append("Для ЮMoney используйте /buyyoomoney <id>.")
 
         if include_admin_hint and self.admin_ids:
             lines.extend(["", "Admin commands: /admin"])
@@ -3330,9 +3330,9 @@ class TelegramPaidMediaBot:
 
         message_lines = [
             "Заказ ЮMoney создан.",
-            "Order: #{0}".format(order["id"]),
-            "Item: #{0} {1}".format(item["id"], item.get("title", "")),
-            "Amount: {0} RUB".format(self.format_rub_amount(order["amount_rub"])),
+            "Заказ: #{0}".format(order["id"]),
+            "Товар: #{0} {1}".format(item["id"], item.get("title", "")),
+            "Сумма: {0} RUB".format(self.format_rub_amount(order["amount_rub"])),
         ]
         payment_url = order.get("payment_url")
         if payment_url:
