@@ -261,21 +261,28 @@ function firstMeaningfulLine(text) {
 
 function buildYooMoneyGuideMarkup() {
 	return [
-		'<details class="tg-paidmedia-inline-guide" open>',
-		'<summary>Открыть инструкцию по ЮMoney</summary>',
+		'<details class="tg-paidmedia-inline-guide">',
+		'<summary>Открыть / скрыть инструкцию по ЮMoney</summary>',
 		'<div class="tg-paidmedia-inline-guide-body">',
+		'<p><strong>Быстрые ссылки</strong></p>',
+		'<ul class="tg-paidmedia-info-list">',
+		'<li><a href="https://yoomoney.ru/document/nastroieki-koshelka" target="_blank" rel="noopener noreferrer">ЮMoney: настройки кошелька</a></li>',
+		'<li><a href="https://yoomoney.ru/document/http-uvedomleniya" target="_blank" rel="noopener noreferrer">ЮMoney: HTTP-уведомления</a></li>',
+		'<li><a href="https://yoomoney.ru/document/api-dlya-razrabotchikov" target="_blank" rel="noopener noreferrer">ЮMoney: API для разработчиков</a></li>',
+		'<li><a href="https://raw.githubusercontent.com/kzolotarev95/luci-app-tg-paidmedia/main/openwrt/install.sh" target="_blank" rel="noopener noreferrer">Установка и обновление TG Paid Media</a></li>',
+		'</ul>',
 		'<p><strong>1. Что взять в ЮMoney</strong></p>',
 		'<ul class="tg-paidmedia-info-list">',
 		'<li>Номер кошелька: вида <code>4100...</code>.</li>',
-		'<li>Секрет: на странице <code>HTTP-уведомления</code> нажмите <code>Показать секрет</code>.</li>',
-		'<li>URL уведомлений: <code>https://ваш-домен/yoomoney/webhook</code>.</li>',
+		'<li>Секрет: откройте <a href="https://yoomoney.ru/document/http-uvedomleniya" target="_blank" rel="noopener noreferrer">HTTP-уведомления</a> и нажмите <code>Показать секрет</code>.</li>',
+		'<li>URL уведомлений: <code>https://wrthub.developer.li/yoomoney/webhook</code>.</li>',
 		'</ul>',
 		'<p><strong>2. Что заполнить в LuCI</strong></p>',
 		'<ul class="tg-paidmedia-info-list">',
 		'<li><code>Включить ЮMoney</code> = включено.</li>',
 		'<li><code>Номер кошелька ЮMoney</code> = ваш номер кошелька.</li>',
 		'<li><code>Секрет уведомлений ЮMoney</code> = секрет из HTTP-уведомлений.</li>',
-		'<li><code>Публичный URL webhook ЮMoney</code> = <code>https://ваш-домен/yoomoney/webhook</code>.</li>',
+		'<li><code>Публичный URL webhook ЮMoney</code> = <code>https://wrthub.developer.li/yoomoney/webhook</code>.</li>',
 		'<li><code>Хост</code> = <code>0.0.0.0</code>, <code>Порт</code> = <code>8100</code>, <code>Путь webhook</code> = <code>/yoomoney/webhook</code>, <code>Путь платежной страницы</code> = <code>/yoomoney/pay</code>.</li>',
 		'</ul>',
 		'<p><strong>3. Пример с VPS и SSH tunnel</strong></p>',
@@ -287,7 +294,7 @@ function buildYooMoneyGuideMarkup() {
 		'<ul class="tg-paidmedia-info-list">',
 		'<li>В ЮMoney нажмите <code>Протестировать</code>.</li>',
 		'<li>В логе должна появиться строка <code>POST /yoomoney/webhook ... 200</code>.</li>',
-		'<li>Потом в боте используйте <code>/buyyoomoney &lt;id&gt;</code>.</li>',
+		'<li>Потом в боте откройте страницу оплаты выше и используйте <code>/buyyoomoney &lt;id&gt;</code>.</li>',
 		'</ul>',
 		'</div>',
 		'</details>'
@@ -1329,6 +1336,8 @@ return view.extend({
 				list-style: none;
 				padding: .82rem .9rem;
 				font-weight: 700;
+				user-select: none;
+				background: var(--tg-surface-soft);
 			}
 
 			.tg-paidmedia-inline-guide summary::-webkit-details-marker {

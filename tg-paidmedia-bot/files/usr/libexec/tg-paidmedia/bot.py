@@ -3329,15 +3329,15 @@ class TelegramPaidMediaBot:
             return
 
         message_lines = [
-            "YooMoney order created.",
+            "Заказ ЮMoney создан.",
             "Order: #{0}".format(order["id"]),
             "Item: #{0} {1}".format(item["id"], item.get("title", "")),
             "Amount: {0} RUB".format(self.format_rub_amount(order["amount_rub"])),
         ]
         payment_url = order.get("payment_url")
         if payment_url:
-            message_lines.append("Open payment page: {0}".format(payment_url))
-        message_lines.append("After successful payment, the bot will deliver the media in this chat.")
+            message_lines.append("Откройте страницу оплаты: {0}".format(payment_url))
+        message_lines.append("Оплатите по ссылке выше. После успешной оплаты бот отправит медиа в этот чат.")
         self.send_message(chat_id, "\n".join(message_lines), disable_web_page_preview=True)
 
     def handle_message(self, message):
